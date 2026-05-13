@@ -115,7 +115,7 @@ This section documents the actual implementation output from running the multi-a
 <table>
   <tr>
     <td width="50%" valign="top">
-      <strong>Given UI Wireframe (Spec)</strong><br/>
+      <strong>Given UI Wireframe (Spec Artifact)</strong><br/>
       <img src="./assets/wireframe-reference.png" width="100%"/>
     </td>
     <td width="50%" valign="top">
