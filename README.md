@@ -96,6 +96,28 @@ flowchart TD
 3. **Forced iteration**: Quality gates must pass
 4. **Clear accountability**: Who built vs who judged
 
+---
+
+## End Result
+
+This section documents the actual implementation output from running the multi-agent workflow.
+
+### kimi 2.5 Build
+
+| Attribute | Value |
+|-----------|-------|
+| **Model** | kimi 2.5 |
+| **Branch** | `git checkout actual-result-kimi25` |
+| **Implementation** | Full kanban board with MEMO panel, 3 columns, toggle, and toolbar |
+
+**Actual UI Screenshot:**
+
+![Kanban Board built by kimi 2.5](./assets/kanban-board-built-by-kimi25.png)
+
+*The above screenshot shows the final rendered output after the Builder-Agent → Reviewer-Agent loop completed successfully.*
+
+---
+
 ## Project Notes
 
 This demo uses a **complex kanban board** (MEMO panel + 3 columns + toggle + toolbar) to stress-test:
