@@ -98,19 +98,8 @@ flowchart TD
 
 ---
 
-## End Result
 
-This section documents the actual implementation output from running the multi-agent workflow.
-
-### kimi 2.5 Build
-
-| Attribute | Value |
-|-----------|-------|
-| **Model** | kimi 2.5 |
-| **Branch** | `git checkout actual-result-kimi25` |
-| **Implementation** | Full kanban board with MEMO panel, 3 columns, toggle, and toolbar |
-
-### Side-by-Side Comparison
+## Side-by-Side Comparison (Wireframe -> Actual Output)
 
 <table>
   <tr>
