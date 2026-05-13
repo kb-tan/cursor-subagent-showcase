@@ -110,6 +110,10 @@ This section documents the actual implementation output from running the multi-a
 | **Branch** | `git checkout actual-result-kimi25` |
 | **Implementation** | Full kanban board with MEMO panel, 3 columns, toggle, and toolbar |
 
+**Given UI Wireframe:**
+![Wireframe](./assets/wireframe-reference.png)
+
+
 **Actual UI Screenshot:**
 
 ![Kanban Board built by kimi 2.5](./assets/kanban-board-built-by-kimi25.png)
