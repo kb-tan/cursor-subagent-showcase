@@ -110,15 +110,22 @@ This section documents the actual implementation output from running the multi-a
 | **Branch** | `git checkout actual-result-kimi25` |
 | **Implementation** | Full kanban board with MEMO panel, 3 columns, toggle, and toolbar |
 
-**Given UI Wireframe:**
-![Wireframe](./assets/wireframe-reference.png)
+### Side-by-Side Comparison
 
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <strong>Given UI Wireframe (Spec)</strong><br/>
+      <img src="./assets/wireframe-reference.png" width="100%"/>
+    </td>
+    <td width="50%" valign="top">
+      <strong>Actual UI Built by kimi 2.5</strong><br/>
+      <img src="./assets/kanban-board-built-by-kimi25.png" width="100%"/>
+    </td>
+  </tr>
+</table>
 
-**Actual UI Screenshot:**
-
-![Kanban Board built by kimi 2.5](./assets/kanban-board-built-by-kimi25.png)
-
-*The above screenshot shows the final rendered output after the Builder-Agent → Reviewer-Agent loop completed successfully.*
+*The comparison above shows the final rendered output (right) against the original wireframe specification (left) after the Builder-Agent → Reviewer-Agent loop completed successfully.*
 
 ---
 
