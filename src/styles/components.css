@@ -1,0 +1,317 @@
+/* ========================================
+   Page Layout
+   ======================================== */
+
+.app {
+  min-height: 100vh;
+  padding: var(--spacing-page-padding);
+  background-color: var(--color-bg-page);
+}
+
+.page-title {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.panels-container {
+  display: flex;
+  gap: var(--layout-panel-gap);
+  align-items: flex-start;
+}
+
+/* ========================================
+   Panel Header (Shared)
+   ======================================== */
+
+.panel-header {
+  margin-bottom: var(--spacing-md);
+}
+
+.panel-label {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-label);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.panel-divider {
+  height: 1px;
+  background-color: var(--color-border-divider);
+  margin-top: var(--spacing-sm);
+}
+
+/* ========================================
+   MEMO Panel
+   ======================================== */
+
+.memo-panel {
+  width: var(--layout-memo-width);
+  flex-shrink: 0;
+  background-color: var(--color-bg-panel);
+  border-radius: var(--card-border-radius);
+  padding: var(--spacing-memo-padding);
+}
+
+.memo-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* ========================================
+   Memo Item
+   ======================================== */
+
+.memo-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) 0;
+}
+
+.memo-checkbox {
+  width: var(--memo-checkbox-size);
+  height: var(--memo-checkbox-size);
+  border: var(--memo-checkbox-border);
+  border-radius: var(--memo-checkbox-border-radius);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: var(--transition-hover);
+}
+
+.memo-checkbox:hover {
+  border-color: var(--color-accent-blue);
+}
+
+.memo-checkbox.checked {
+  background-color: var(--color-accent-blue);
+  border-color: var(--color-accent-blue);
+  color: white;
+}
+
+.memo-checkbox svg {
+  width: 10px;
+  height: 10px;
+}
+
+.memo-label {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-secondary);
+}
+
+/* ========================================
+   TODO Panel
+   ======================================== */
+
+.todo-panel {
+  flex: 1;
+  min-width: 0;
+}
+
+.todo-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+/* ========================================
+   View Toggle
+   ======================================== */
+
+.view-toggle {
+  display: flex;
+  background-color: var(--color-toggle-bg);
+  border-radius: var(--toggle-border-radius);
+  padding: var(--toggle-padding);
+  gap: var(--spacing-xs);
+}
+
+.toggle-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: calc(var(--toggle-border-radius) - 2px);
+  background: transparent;
+  color: var(--color-icon);
+  cursor: pointer;
+  transition: var(--transition-toggle);
+}
+
+.toggle-button:hover {
+  color: var(--color-icon-hover);
+}
+
+.toggle-button.active {
+  background-color: white;
+  color: var(--color-toggle-active);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* ========================================
+   Toolbar
+   ======================================== */
+
+.toolbar {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.toolbar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--color-icon);
+  cursor: pointer;
+  border-radius: var(--toggle-border-radius);
+  transition: var(--transition-hover);
+}
+
+.toolbar-button:hover {
+  color: var(--color-icon-hover);
+  background-color: var(--color-bg-panel);
+}
+
+/* ========================================
+   Kanban Board
+   ======================================== */
+
+.kanban-board {
+  display: flex;
+  gap: var(--layout-column-gap);
+  overflow-x: auto;
+  padding-bottom: var(--spacing-sm);
+}
+
+/* ========================================
+   Status Column
+   ======================================== */
+
+.status-column {
+  min-width: var(--layout-column-width);
+  flex: 1;
+  background-color: var(--color-bg-panel);
+  border-radius: var(--card-border-radius);
+  padding: var(--spacing-md);
+}
+
+.column-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+
+/* ========================================
+   Status Badge
+   ======================================== */
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--badge-padding);
+  border-radius: var(--badge-border-radius);
+  font-size: var(--font-size-badge);
+  font-weight: var(--font-weight-semibold);
+}
+
+.status-dot {
+  width: var(--badge-dot-size);
+  height: var(--badge-dot-size);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-label {
+  margin-right: var(--spacing-xs);
+}
+
+.status-count {
+  opacity: 0.8;
+}
+
+/* ========================================
+   Todo Card
+   ======================================== */
+
+.todo-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-card-padding);
+  background-color: var(--color-bg-card);
+  border: var(--card-border);
+  border-radius: var(--card-border-radius);
+  box-shadow: var(--card-shadow);
+  cursor: pointer;
+  transition: var(--transition-hover);
+}
+
+.todo-card:hover {
+  background-color: var(--color-bg-card-hover);
+  box-shadow: var(--card-shadow-hover);
+}
+
+.todo-checkbox {
+  width: 16px;
+  height: 16px;
+  border: var(--memo-checkbox-border);
+  border-radius: var(--memo-checkbox-border-radius);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: var(--transition-hover);
+}
+
+.todo-checkbox:hover {
+  border-color: var(--color-accent-blue);
+}
+
+.todo-checkbox.checked {
+  background-color: var(--color-accent-blue);
+  border-color: var(--color-accent-blue);
+  color: white;
+}
+
+.todo-checkbox svg {
+  width: 10px;
+  height: 10px;
+}
+
+.todo-card-title {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+/* ========================================
+   List View Placeholder
+   ======================================== */
+
+.list-view-placeholder {
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--color-text-placeholder);
+  font-size: var(--font-size-body);
+  background-color: var(--color-bg-panel);
+  border-radius: var(--card-border-radius);
+}

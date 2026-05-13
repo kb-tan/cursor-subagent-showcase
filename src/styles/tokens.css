@@ -1,0 +1,118 @@
+/* Design Tokens: Simple TODO List */
+/* These CSS variables are the single source of truth for all visual values */
+
+:root {
+  /* ========================================
+     Colour Tokens
+     ======================================== */
+  --color-bg-page: #FFFFFF;
+  --color-bg-panel: #F8F9FA;
+  --color-bg-card: #FFFFFF;
+  --color-bg-card-hover: #F0F4F8;
+
+  --color-text-primary: #1A1A1A;
+  --color-text-secondary: #4A5568;
+  --color-text-label: #718096;
+  --color-text-placeholder: #A0AEC0;
+
+  --color-border: #E2E8F0;
+  --color-border-divider: #E2E8F0;
+
+  --color-accent-blue: #4299E1;
+  --color-accent-green: #48BB78;
+  --color-accent-grey: #A0AEC0;
+
+  --color-badge-bg-inprogress: rgba(66, 153, 225, 0.12);
+  --color-badge-text-inprogress: #2B6CB0;
+  --color-badge-bg-completed: rgba(72, 187, 120, 0.12);
+  --color-badge-text-completed: #276749;
+  --color-badge-bg-notstarted: rgba(160, 174, 192, 0.12);
+  --color-badge-text-notstarted: #4A5568;
+
+  --color-icon: #718096;
+  --color-icon-hover: #2D3748;
+
+  --color-toggle-bg: #E2E8F0;
+  --color-toggle-active: #4299E1;
+
+  /* ========================================
+     Typography Tokens
+     ======================================== */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-size-title: 1.75rem;
+  --font-size-label: 0.6875rem;
+  --font-size-body: 0.9375rem;
+  --font-size-badge: 0.75rem;
+  --font-weight-bold: 700;
+  --font-weight-semibold: 600;
+  --font-weight-normal: 400;
+  --letter-spacing-label: 0.08em;
+
+  /* ========================================
+     Spacing Tokens
+     ======================================== */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-card-padding: 12px 16px;
+  --spacing-memo-padding: 12px;
+  --spacing-page-padding: 32px 24px;
+
+  /* ========================================
+     Layout Tokens
+     ======================================== */
+  --layout-content-width: 100%;
+  --layout-memo-width: 280px;
+  --layout-todo-width: 1fr;
+  --layout-column-width: 240px;
+  --layout-panel-gap: 32px;
+  --layout-column-gap: 16px;
+
+  /* ========================================
+     Interaction / Animation Tokens
+     ======================================== */
+  --transition-hover: all 120ms ease-in;
+  --transition-toggle: background 150ms ease;
+
+  /* ========================================
+     Component-Specific Tokens
+     ======================================== */
+
+  /* StatusBadge */
+  --badge-border-radius: 999px;
+  --badge-padding: 3px 10px;
+  --badge-dot-size: 8px;
+
+  /* TodoCard */
+  --card-border-radius: 8px;
+  --card-border: 1px solid var(--color-border);
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  --card-shadow-hover: 0 2px 6px rgba(0,0,0,0.10);
+
+  /* MemoItem */
+  --memo-checkbox-size: 14px;
+  --memo-checkbox-border-radius: 3px;
+  --memo-checkbox-border: 1.5px solid var(--color-border);
+
+  /* ViewToggle */
+  --toggle-border-radius: 6px;
+  --toggle-padding: 4px;
+  --toggle-icon-size: 16px;
+}
+
+/* Global reset and base styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--color-bg-page);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
