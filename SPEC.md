@@ -18,11 +18,11 @@
 | [H] | Status Badge (dot + label + count) |
 | [I] | Todo Card |
 
-> **Design tokens:** `./DESIGN_TOKENS.md`
+> **Design tokens:** `./references/DESIGN_TOKENS.md`
 > All colours, spacing, typography and timing values must use tokens defined there.
 > Never hardcode a value that exists as a token.
 
-> **Foundation:** `./FOUNDATION.md`
+> **Foundation:** `./references/FOUNDATION.md`
 > Project setup, tech stack, and dev server requirements.
 
 ---
