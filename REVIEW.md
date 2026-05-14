@@ -1,51 +1,65 @@
-# Review: [Component Name]
 
-## Current Status
-**Iteration:** #0  
-**Status:** PENDING  
+# REVIEW.md
+
+**Status:** PENDING
 **Last Action:** Awaiting initial build
+**Current Iteration:** 0
 
 ---
 
 ## Builder Output
+
 <!-- Builder Agent writes here after each build -->
-**Files Created:**
-- [ ] List components/files built
 
-**Deviations from Spec:**
-- [ ] Note any intentional deviations
-
-**Notes:**
-<!-- Any build notes -->
+**Iteration:** -
+**Files Created/Modified:** -
+**Deviations from Spec:** -
+**Notes:** -
 
 ---
 
 ## Reviewer Feedback
+
 <!-- Reviewer Agent writes here after each review -->
 
-### Static Code Review
+### Regression Check
+| AC | Previous Result | Current Result | Type |
+|----|----------------|----------------|------|
+| -  | -              | -              | -    |
+
+### Static Code Review — Frontend
 | AC | Criteria | Result | Notes |
 |----|----------|--------|-------|
-| - | - | PENDING | - |
+| -  | -        | PENDING | -   |
 
-### Browser Validation
-**Dev Server:** ❌ Not tested  
-**Screenshot:** ❌ Not captured  
-**Visual Checklist:**
-- [ ] Layout matches wireframe
-- [ ] Colors match design tokens
-- [ ] Typography correct
-- [ ] Spacing/padding correct
-- [ ] Interactions work (hover, click)
+### Static Code Review — Backend
+| AC | Criteria | Result | Notes |
+|----|----------|--------|-------|
+| -  | -        | PENDING | -   |
+
+### End-to-End Validation
+| Check | Target | Actual | Pass/Fail |
+|-------|--------|--------|-----------|
+| Frontend starts (port 5173) | No errors | - | - |
+| Backend starts (port 3001) | No errors | - | - |
+| Layout matches wireframe | 95%+ | -% | - |
+| Design token compliance | 100% | -/54 | - |
+| Console errors | 0 | - | - |
+| US1: Plan created → tab → tasks populate | Pass | - | - |
+| US2: Tab switch mid-generation | Pass | - | - |
+| US3: Targeted task update | Pass | - | - |
+| US4: Highlight + context delete | Pass | - | - |
 
 ### Quantified Results
-- Design Token Compliance: -/25 checks
-- Visual Match: -% (target: 95%)
+- AC Pass Rate: -/54
+- Visual Match: -%
 - Console Errors: -
+- E2E Scenarios Passing: -/4
 
 ---
 
 ## Verdict
-<!-- Reviewer sets this -->
-**Overall:** PENDING  
+
+**Overall:** PENDING
 **Next Action:** Await build completion
+
