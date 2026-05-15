@@ -1,4 +1,7 @@
 .vite
+dist/
 node_modules/
 review_history.db
+agentic-todo.db
 .vscode
+.DS_Store

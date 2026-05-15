@@ -1,77 +1,95 @@
 
+> **SCHEMA CONTRACT**
+> Agents locate information in this file by exact section heading and column name.
+> Do not rename sections. Do not reorder columns within tables.
+> Required sections: `API Endpoints`, `Event Envelope`, `Job Queue`, `Event Bus`, `Agent Design`, `Dispatch Layer`, `Logging`, `Integration Tests`
+> Optional sections: any additional sections are ignored by agents unless referenced in SPEC.md.
+> Phase 0 validation: SKILL.md reads this file and halts if any required section is missing.
+
+> **`// SWAP` CONVENTION**
+> Any code block annotated with `// SWAP: ...` marks an implementation that is intentionally simplified for local development.
+> The comment describes what to replace it with in a production environment.
+> Builder must include `// SWAP` comments exactly as shown — Reviewer checks for their presence.
+> Never remove a `// SWAP` comment — it is a production readiness marker, not dead code.
+
 # ARCHITECTURE.md
 
-> Referenced by SPEC.md. Defines the backend contract the Builder must implement
-> and the Reviewer must validate against.
+## Table of Contents
+| # | Section | Purpose |
+|---|---------|---------|
+| 1 | System Topology | How components connect end-to-end |
+| 2 | API Endpoints | Request/response contracts |
+| 3 | Event Envelope | All SSE event types and payloads |
+| 4 | Job Queue | p-queue configuration and job states |
+| 5 | Event Bus | InMemoryEventBus implementation |
+| 6 | Agent Design | LangGraph nodes, edges, tools |
+| 7 | Dispatch Layer | Frontend SSE routing |
+| 8 | Logging | Structured log format for frontend and backend |
+| 9 | Integration Tests | Test levels, API contracts, E2E strategy |
 
-## System Overview
+---
 
+## 1. System Topology
 ```
 Browser (React)
-    │
-    │  POST /api/chat  { message, sessionId, context }
-    ▼
-Express — Inbound Route
-    │  mints jobId, enqueues job, returns { jobId }
-    ▼
-p-queue (in-memory, concurrency: 1 per session)
-    │  dequeues job
-    ▼
+ │
+ │  POST /api/chat { message, sessionId, context }
+ ▼
+Express
+ │  mints jobId → enqueues → returns { jobId }
+ ▼
+p-queue (1 per sessionId, concurrency: 1)
+ ▼
 LangGraph Agent
-    ├── reads conversation history from SQLite
-    ├── calls tools: create_plan / create_task / update_task / delete_task / query_tasks
-    │       │
-    │       ▼
-    │   SQLite (plans + tasks + jobs + conversation_history)
-    │
-    └── emits typed events → InMemoryEventBus
-                                    │
-                              SSE stream per sessionId
-                                    │
-                              GET /api/events?sessionId=
-                                    │
-                              Browser Dispatch Layer
-                                    │
-                         routes by eventType → correct React component
+ ├── SQLite (plans, tasks, jobs, conversation_history)
+ └── InMemoryEventBus
+       │
+       SSE stream → GET /api/events?sessionId=
+       │
+       Browser Dispatch Layer
+       └── routes by eventType → React components
 ```
 
 ---
 
-## API Endpoints
+## 2. API Endpoints
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/chat` | POST | Submit message, returns `{ jobId }` |
+| `/api/events` | GET | SSE stream (`?sessionId=`) |
+| `/api/tasks` | POST | Manual task creation |
+| `/api/tasks/:id` | PATCH | Partial task update |
+| `/api/tasks/:id` | DELETE | Delete task |
+| `/api/state` | GET | Hydrate state on refresh (`?sessionId=`) |
+| `/api/health` | GET | Server health check |
 
-### `POST /api/chat`
+### Request / Response Shapes
+
+**POST /api/chat**
 ```typescript
 // Request
 { message: string; sessionId: string; context?: { highlightedTaskId?: string } }
 // Response
 { jobId: string }
 ```
-Creates job (QUEUED), enqueues to p-queue, returns immediately.
 
-### `GET /api/events?sessionId=`
-SSE stream (`text/event-stream`). Keep-alive ping every 15 seconds.
-Delivers all events published to eventBus for this sessionId.
-
-### `POST /api/tasks`
+**GET /api/state**
 ```typescript
-// Request
-{ planId?: string; title: string; date: string; labels?: string[] }
-// Response — created task object
+// Response
+{ plans: Plan[]; tasks: Task[] }
 ```
-Manual task creation. No agent involvement.
 
-### `PATCH /api/tasks/:id`
-Partial task update. Returns updated task.
-
-### `DELETE /api/tasks/:id`
-Returns `{ success: true }`.
+**GET /api/health**
+```typescript
+// Response
+{ status: "ok" }
+```
 
 ---
 
-## Event Envelope — `src/types/events.ts`
-
-This file is the single source of truth for all event types.
-Both frontend and backend import from here. Never duplicate or redefine.
+## 3. Event Envelope
+> `src/types/events.ts` is the single definition of all event types.
+> Both frontend and backend import from here — never redefine.
 
 ```typescript
 export type EventType =
@@ -103,13 +121,9 @@ export interface TaskCreatedEvent extends BaseEvent {
   payload: {
     planId: string;
     task: {
-      id: string;
-      title: string;
-      date: string;
+      id: string; title: string; date: string;
       status: 'TODO' | 'IN_PROGRESS' | 'DONE';
-      labels: string[];   // min 1, max 3
-      week?: number;
-      day?: number;
+      labels: string[]; week?: number; day?: number;
     };
   };
 }
@@ -165,38 +179,31 @@ export type AgentEvent =
 
 ---
 
-## p-queue Configuration
+## 4. Job Queue
+- One `p-queue` instance per `sessionId`, concurrency: `1`
+- Job states: `QUEUED → IN_PROGRESS → DONE | FAILED`
+- SSE keep-alive ping: every `15` seconds
 
 ```typescript
 // server/queue/jobQueue.ts
-// One queue per sessionId — concurrency 1 ensures ordered processing per user
 import PQueue from 'p-queue';
-
 const queues = new Map<string, PQueue>();
-
 export function getQueue(sessionId: string): PQueue {
-  if (!queues.has(sessionId)) {
-    queues.set(sessionId, new PQueue({ concurrency: 1 }));
-  }
+  if (!queues.has(sessionId)) queues.set(sessionId, new PQueue({ concurrency: 1 }));
   return queues.get(sessionId)!;
 }
 ```
 
 ---
 
-## InMemoryEventBus
-
+## 5. Event Bus
 ```typescript
 // server/sse/eventBus.ts
-// SWAP: replace publish/subscribe with Redis Pub/Sub for multi-instance production
-
+// SWAP: replace with Redis Pub/Sub for multi-instance production
 import { AgentEvent } from '../../src/types/events';
-
 type Subscriber = (event: AgentEvent) => void;
-
 class InMemoryEventBus {
   private subscribers = new Map<string, Subscriber[]>();
-
   subscribe(sessionId: string, fn: Subscriber): () => void {
     const subs = this.subscribers.get(sessionId) ?? [];
     this.subscribers.set(sessionId, [...subs, fn]);
@@ -205,81 +212,138 @@ class InMemoryEventBus {
       this.subscribers.set(sessionId, current.filter(s => s !== fn));
     };
   }
-
   publish(sessionId: string, event: AgentEvent) {
-    const subs = this.subscribers.get(sessionId) ?? [];
-    subs.forEach(fn => fn(event));
+    (this.subscribers.get(sessionId) ?? []).forEach(fn => fn(event));
   }
 }
-
 export const eventBus = new InMemoryEventBus();
 ```
 
 ---
 
-## LangGraph Agent Design
+## 6. Agent Design
 
+### LangGraph Graph
 ```
-Nodes:
-  understand_intent  → classifies message into intent type
-  plan_action        → decides which tools to call
-  execute_tools      → calls MCP-style tools
-  emit_events        → publishes typed events to eventBus after each tool call
-  compose_reply      → generates final CHAT_REPLY
-  handle_error       → emits JOB_FAILED on unrecoverable error
-
-Edges:
-  understand_intent → plan_action
-  plan_action → execute_tools
-  execute_tools → emit_events
-  emit_events → execute_tools   (loop: more tools to call)
-  emit_events → compose_reply   (terminal: all tools done)
-  compose_reply → END
-  any node → handle_error       (on exception)
+understand_intent → plan_action → execute_tools → emit_events
+                                       ↑               │
+                                       └───────────────┘ (loop until done)
+                                                       │
+                                               compose_reply → END
+any node → handle_error (on exception)
 ```
 
----
-
-## MCP-Style Tools
-
-Functions in `server/agent/tools/`. Interface designed to be swappable with a real
-MCP client — replace the function body with an MCP client call, keep the signature.
-
+### MCP-Style Tools
 ```typescript
 // server/agent/tools/planTools.ts
-// SWAP: replace function body with MCP client call for production
-
+// SWAP: replace with MCP client call for production
 create_plan(args: { name: string; type: string; sessionId: string }): Promise<Plan>
 get_plans(args: { sessionId: string }): Promise<Plan[]>
 
 // server/agent/tools/taskTools.ts
-// SWAP: replace function body with MCP client call for production
-
+// SWAP: replace with MCP client call for production
 create_task(args: { planId: string; title: string; date: string; labels: string[]; week?: number; day?: number }): Promise<Task>
 update_task(args: { taskId: string; fields: Partial<Task> }): Promise<Task>
 delete_task(args: { taskId: string }): Promise<{ success: true }>
 query_tasks(args: { sessionId: string; planId?: string; status?: string; sortBy?: 'date_asc' | 'date_desc'; limit?: number }): Promise<Task[]>
 ```
 
----
-
-## Conversation Memory
-
+### Conversation Memory
 ```typescript
 // server/agent/memory.ts
-// SQLite-persisted. Survives server restarts.
-// Load last N messages for sessionId before invoking graph.
-// Append user message before graph run.
-// Append assistant reply after graph completes.
+// SQLite-persisted. Load last N messages before graph run.
+// Append user message before, assistant reply after.
 ```
 
 ---
 
-## Dispatch Layer (Frontend)
-
+## 7. Dispatch Layer
 ```typescript
 // src/dispatch/dispatchLayer.ts
 // Singleton. Components register via on(eventType, handler).
 // SSE listener calls dispatch(event) on every received event.
-// Routes by eventType. Components filter further by planId if needed.
+// Components filter further by planId if needed.
 ```
+
+---
+
+## 8. Logging
+> Both frontend and backend must implement structured logging.
+> These logs are the primary debugging tool for tracing data flow issues.
+> Logger function names are the authoritative names agents must use — do not rename.
+
+### Backend Format
+```
+[TIMESTAMP] [LEVEL] [MODULE] message  key=value
+```
+Levels: `INFO` · `WARN` · `ERROR`
+
+Expected log sequence per request:
+```
+[REQUEST]   POST /api/chat  sessionId=x
+[QUEUE]     jobId=x  status=QUEUED
+[LANGGRAPH] input={intent, context}
+[TOOL]      {tool_name}  args={...}  result={...}
+[SSE]       emit {eventType}  key=value
+[LANGGRAPH] output={summary}
+[RESPONSE]  200  duration=Xms
+```
+
+```typescript
+// server/logger.ts
+// Logger function name: log — use this name exactly
+export const log = (level: 'INFO'|'WARN'|'ERROR', module: string, msg: string, meta?: object) =>
+  console.log(`[${new Date().toISOString()}] [${level}] [${module}] ${msg}`, meta ?? '')
+```
+
+### Frontend Format
+```
+[MODULE] action  key=value
+```
+
+Expected log sequence per interaction:
+```
+[REQUEST]  POST /api/chat
+[SSE]      connected
+[SSE]      received {eventType}
+[DISPATCH] {eventType} → {Component}
+[RENDER]   {Component} updated
+```
+
+```typescript
+// src/utils/logger.ts
+// Logger function name: flog — use this name exactly
+export const flog = (module: string, action: string, meta?: object) =>
+  console.log(`[${module}] ${action}`, meta ?? '')
+```
+
+### Debugging Guide
+| Symptom | Root cause |
+|---------|-----------|
+| `[SSE] received X` but no `[DISPATCH] X` | dispatchLayer routing bug |
+| `[DISPATCH] X` but no `[RENDER]` | component subscription bug |
+| `[TOOL] create_task` but no `[SSE] emit TASK_CREATED` | emit_events node bug |
+
+---
+
+## 9. Integration Tests
+
+### Test Levels
+| Level | Tool | Scope | When |
+|-------|------|-------|------|
+| Unit | Vitest + RTL | Component in isolation | Every component loop |
+| API | Supertest | Endpoints, no browser | Integration pass |
+| E2E | Playwright | Full stack, real browser | Integration pass |
+
+### API Contract Coverage
+One test per endpoint in § 2. API Endpoints. Each test verifies:
+- Correct HTTP status
+- Response shape matches contract
+- Side effects (e.g. task exists in SQLite after POST)
+
+### E2E Coverage
+One test file per scenario in SPEC.md § User Scenarios.
+Selectors come from SPEC.md § Testability.
+TAC mapping comes from SPEC.md § Test Acceptance Criteria.
+Playwright `webServer` config auto-starts both servers.
+Use `reuseExistingServer: true` to reuse already-running servers.
