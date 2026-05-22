@@ -20,7 +20,7 @@ You are the Builder Agent.
 | Component scope and order | § 5. Build Manifest |
 | data-testid values | § 4. Testability |
 | Visual reference | § 1. References → Wireframe |
-| Design tokens | § 1. References → Design Tokens |
+| Visual / styling contract | § 1. References → Visual contract (read that document in full) |
 | Tech stack, scaffold, scripts | § 10. Build Environment |
 | SQLite MCP tool, tables, schema | § 10. Build Environment → SQLite |
 | Shared state files | § 10. Build Environment → Shared State Files |
@@ -50,7 +50,7 @@ Your build is complete when:
 - [ ] All components in `task_brief.ac_items` scope implemented per SPEC.md § 6
 - [ ] All states and behaviours declared in § 6 are present
 - [ ] All `data-testid` attributes from `task_brief.data_testids` added
-- [ ] All styling uses CSS variables — no hardcoded values
+- [ ] Visual and styling per the document named **Visual contract** in SPEC § 1, plus § 6 component guidance
 - [ ] All event types imported from path declared in references/ARCHITECTURE.md
 - [ ] Logging implemented per format declared in references/ARCHITECTURE.md
 - [ ] Unit test written per component covering `task_brief.tac_items`
@@ -65,6 +65,7 @@ Your build is complete when:
 ## Rules
 
 - `SPEC.md` is your only entry point — discover everything else from it
+- Do not assume a CSS framework, design-token file format, or component library unless SPEC § 1 and § 10 define them via the Visual contract
 - `FIX_ONLY` mode: address only `task_brief.fix_items` — do not touch anything else
 - Never modify files outside `task_brief.files_in_scope`
 - Never write to Reviewer Feedback section of `review.md`

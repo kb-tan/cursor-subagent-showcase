@@ -60,12 +60,14 @@ If any section is missing → halt and report. Do not proceed.
 Read from SPEC.md § 10:
 
 ```
-has_frontend:  true if frontend stack declared in § 10
-has_backend:   true if backend stack declared in § 10
-has_tokens:    true if Design Tokens listed in § 1. References
-has_wireframe: true if wireframe asset listed in § 1. References
-test_levels:   read from § 11. Runtime Contract
+has_frontend:        true if frontend stack declared in § 10
+has_backend:         true if backend stack declared in § 10
+has_visual_contract: true if Visual contract listed in § 1. References
+has_wireframe:       true if wireframe asset listed in § 1. References
+test_levels:         read from § 11. Runtime Contract
 ```
+
+> `visual_match_threshold` in config may be overridden by SPEC § 10 / Visual contract when present.
 
 **Step 4 — Initialise database**
 
