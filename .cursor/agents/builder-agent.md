@@ -57,7 +57,7 @@ Your build is complete when:
 - [ ] Servers start without errors — read commands from SPEC.md § 10
 - [ ] No passing AC from `task_brief.passing_acs` broken:
   - Read MCP tool + db path from SPEC.md § 10 → SQLite
-  - Read column names from `.cursor/skills/references/init-db.sql`
+  - Read column names from `.cursor/skills/shipit/references/init-db.sql`
   - Query `ac_results` for currently passing ACs before touching shared files
 - [ ] `review.md` Builder Output section updated, status `AWAITING_REVIEW`
 - [ ] Build record written to SQLite `reviews` table
@@ -69,5 +69,5 @@ Your build is complete when:
 - `FIX_ONLY` mode: address only `task_brief.fix_items` — do not touch anything else
 - Never modify files outside `task_brief.files_in_scope`
 - Never write to Reviewer Feedback section of `review.md`
-- Never hardcode SQLite table or column names — read from `.cursor/skills/references/init-db.sql`
+- Never hardcode SQLite table or column names — read from `.cursor/skills/shipit/references/init-db.sql`
 - Escalate to human if still CHANGES_REQUIRED after iteration limit in Orchestrator config

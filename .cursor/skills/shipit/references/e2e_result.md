@@ -1,7 +1,7 @@
 
 # e2e_result.md
 
-> Template file. Location: `.cursor/skills/references/e2e_result.md`
+> Template file. Location: `.cursor/skills/shipit/references/e2e_result.md`
 > Orchestrator copies this to `./e2e_result.md` at the start of each integration pass.
 > E2E Agent writes all sections.
 > Orchestrator reads verdict and routing recommendation to make rebuild decisions.

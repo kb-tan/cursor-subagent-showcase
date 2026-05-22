@@ -47,7 +47,7 @@ Your test run is complete when:
 - [ ] Verdict set: `APPROVED` or `CHANGES_REQUIRED`
 - [ ] Results written to SQLite — tables from SPEC.md § 10 → SQLite
   - Read MCP tool + db path from SPEC.md § 10 → SQLite
-  - Read column names from `.cursor/skills/references/init-db.sql`
+  - Read column names from `.cursor/skills/shipit/references/init-db.sql`
 
 ## Failure Analysis
 
@@ -88,5 +88,5 @@ SHIPPED:             — all scenarios pass
 - Never hardcode scenario IDs — derive from SPEC.md § 7
 - Never hardcode selectors — derive from SPEC.md § 4
 - Never hardcode test commands — derive from SPEC.md § 10
-- Never hardcode SQLite table or column names — read from `.cursor/skills/references/init-db.sql`
+- Never hardcode SQLite table or column names — read from `.cursor/skills/shipit/references/init-db.sql`
 - Escalate to human if servers cannot start after 2 attempts

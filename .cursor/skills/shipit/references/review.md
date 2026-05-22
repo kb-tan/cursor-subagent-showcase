@@ -1,7 +1,7 @@
 
 # review.md
 
-> Template file. Location: `.cursor/skills/references/review.md`
+> Template file. Location: `.cursor/skills/shipit/references/review.md`
 > Orchestrator copies this to `./review.md` at the start of each iteration.
 > Builder writes to "Builder Output" section only.
 > Reviewer writes to "Reviewer Feedback" section only.

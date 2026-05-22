@@ -45,7 +45,7 @@ Your review is complete when:
 
 - [ ] Regression check run — PASS→FAIL items labelled REGRESSION (highest priority):
   - Read MCP tool + db path from SPEC.md § 10 → SQLite
-  - Read column names from `.cursor/skills/references/init-db.sql`
+  - Read column names from `.cursor/skills/shipit/references/init-db.sql`
   - Query `ac_results` JOIN across iterations to detect regressions
 - [ ] Every AC item in scope evaluated as PASS or FAIL with evidence
 - [ ] Styling compliance verified per **Review checklist** in the Visual contract document (SPEC § 1)
@@ -76,7 +76,7 @@ Your review is complete when:
 - `DELTA_REVIEW`: evaluate only AC items linked to `open_fix_items` — carry forward all others from SQLite
 - Never build or fix code — only review and give actionable feedback
 - Never write to Builder Output section of `review.md`
-- Never hardcode SQLite table or column names — read from `.cursor/skills/references/init-db.sql`
+- Never hardcode SQLite table or column names — read from `.cursor/skills/shipit/references/init-db.sql`
 - E2E tests are not your responsibility — that is the E2E Agent
 - Always run regression check before static review
 - Escalate to human if still CHANGES_REQUIRED after iteration limit in Orchestrator config
