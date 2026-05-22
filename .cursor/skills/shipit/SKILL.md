@@ -1,20 +1,24 @@
 
 ---
 name: shipit
-description: Builds and ships production-ready components through scoped Builder-Tester-Reviewer loops. Reads Build Manifest from SPEC.md. All project-specific values derived from reference files at runtime.
+description: Builds and ships production-ready components through scoped Builder-Reviewer-E2E loops. Reads Build Manifest from SPEC.md. All project-specific values derived from SPEC.md at runtime.
 ---
 
 You are the shipit orchestrator.
 Your mission: deliver battle-tested components that pass strict review and automated tests.
 
 ## Config
-> These are the only values hardcoded in this skill. Everything else is read from reference files.
+
+> These are the only values hardcoded in this skill.
+> Everything else is read from SPEC.md at runtime.
 
 ```
 config:
-  max_iterations: 3
-  visual_match_threshold: 95
+  max_iterations:          3
+  visual_match_threshold:  95
 ```
+
+---
 
 ## Workflow
 
@@ -25,123 +29,132 @@ When a user runs `/shipit`:
 ### Phase 0 — Setup and Validation
 
 **Step 1 — Read SPEC.md**
-- Locate `## 1. References` → load every document listed
-- Locate `## 5. Build Manifest` → this is your execution plan
-- Locate `## 8. Acceptance Criteria` → load all AC items with `review_type` and `severity`
-- Locate `## 9. Test Acceptance Criteria` → load all TAC items with `test_level` and `maps_to_ac`
 
-**Step 2 — Validate reference files**
-For each file listed in SPEC.md references, verify it exists and contains all required sections per its schema contract:
+- Locate `§ 1. References` — note all referenced documents
+- Locate `§ 5. Build Manifest` — this is your execution plan
+- Locate `§ 8. Acceptance Criteria` — load all AC items
+- Locate `§ 9. Test Acceptance Criteria` — load all TAC items
+- Locate `§ 10. Build Environment` — read scripts, SQLite config, shared state files
+- Locate `§ 11. Runtime Contract` — read test levels and infrastructure
+
+**Step 2 — Validate SPEC.md completeness**
+
+Verify SPEC.md contains all required sections before proceeding:
 
 ```
-FOUNDATION.md required sections:
-  Tech Stack | Project Scaffold | Dev Server | NPM Scripts | Test Toolchain | Styling Rules
-
-ARCHITECTURE.md required sections:
-  API Endpoints | Event Envelope | Job Queue | Event Bus | Agent Design | Dispatch Layer | Logging | Integration Tests
-
-DESIGN_TOKENS.md required sections (if present):
-  Colours — Light Mode | Typography | Sizing | Borders & Radius | Spacing | Timing | Transitions
+§ 1. References
+§ 4. Testability
+§ 5. Build Manifest
+§ 6. Components
+§ 7. User Scenarios
+§ 8. Acceptance Criteria
+§ 9. Test Acceptance Criteria
+§ 10. Build Environment
+§ 11. Runtime Contract
 ```
 
-If any required section is missing → halt and report which file and section is missing. Do not proceed.
+If any section is missing → halt and report. Do not proceed.
 
 **Step 3 — Detect project capabilities**
-Read from loaded reference files:
+
+Read from SPEC.md § 10:
 
 ```
-has_frontend:  true if FOUNDATION.md Tech Stack contains a frontend framework
-has_backend:   true if FOUNDATION.md Tech Stack contains a backend runtime
-has_tokens:    true if DESIGN_TOKENS.md is listed in SPEC.md references
-has_wireframe: true if a wireframe asset is listed in SPEC.md references
-test_levels:   read Scope column from FOUNDATION.md Test Toolchain
+has_frontend:  true if frontend stack declared in § 10
+has_backend:   true if backend stack declared in § 10
+has_tokens:    true if Design Tokens listed in § 1. References
+has_wireframe: true if wireframe asset listed in § 1. References
+test_levels:   read from § 11. Runtime Contract
 ```
 
 **Step 4 — Initialise database**
-Read init command from `FOUNDATION.md § 4. NPM Scripts` (`init-db` script):
-```bash
-[init-db command from FOUNDATION.md]
-```
-Verify `review_history.db` exists after running. Create schema if missing.
 
-**Step 5 — Initialise REVIEW.md**
-Set status to `IN_PROGRESS`. Record project name from SPEC.md Overview.
+Read init command from SPEC.md § 10 → NPM Scripts:
+
+```bash
+[init-db command from SPEC.md § 10]
+```
+
+Verify `review_history.db` exists. Schema at `.cursor/skills/references/init-db.sql`.
+
+**Step 5 — Initialise shared state files**
+
+Copy templates from `.cursor/skills/references/` to project root:
+
+```
+copy .cursor/skills/references/review.md     → ./review.md
+```
+
+Set `review.md` status to `IN_PROGRESS`.
+Set component and iteration from current Build Manifest row.
+These files are overwritten each iteration — history lives in SQLite only.
 
 ---
 
 ### Phase 1 — Component Loop
 
-Read Build Manifest from `SPEC.md § 5`. Process each row in order.
+Read Build Manifest from SPEC.md § 5. Process each row in order.
 
 ```
 FOR each row in Build Manifest (in order):
 
   1. DEPENDENCY CHECK
-     Query SQLite:
+     Query SQLite — read table name from init-db.sql:
        SELECT component, status FROM build_manifest_state
        WHERE component IN ([row.depends_on])
-     If any dependency status != APPROVED → skip row, return after unblocked rows complete.
+     If any dependency != APPROVED → skip row, return after unblocked rows complete.
 
   2. BUILD APPROVED FILE REGISTRY
      Query SQLite for all APPROVED components and their files_in_scope.
-     This is the hard boundary — builder must not touch these files.
+     Hard boundary — builder must not touch these files.
 
-  3. CONSTRUCT TASK BRIEF
+  3. RESET review.md
+     Copy .cursor/skills/references/review.md → ./review.md
+     Set: status=IN_PROGRESS, iteration=[N], component=[row.Scope]
+
+  4. CONSTRUCT TASK BRIEF
      task_brief:
        component:      [row.Scope]
        mode:           FULL_BUILD
-       ac_items:       [row.AC Items — parsed from Build Manifest]
-       tac_items:      [row.TAC Items — parsed from Build Manifest, unit-level only]
-       files_in_scope: [row.Files — parsed from Build Manifest]
-       data_testids:   [row.Data-testids — parsed from Build Manifest]
+       ac_items:       [row.AC Items]
+       tac_items:      [row.TAC Items — unit-level only]
+       files_in_scope: [row.Files]
+       data_testids:   [row.Data-testids]
        passing_acs:    [query from SQLite ac_results WHERE result = 'PASS']
        fix_items:      []
        iteration:      1
 
-  4. LAUNCH /tester subagent (COMPONENT mode):
-     test_context:
-       mode:       COMPONENT
-       component:  [row.Scope]
-       tac_items:  [unit-level TAC items from row.TAC Items]
-       iteration:  1
-     Wait for: TEST_RESULTS.md updated with verdict
+  5. LAUNCH /builder subagent
+     Pass: task_brief
+     Wait for: AWAITING_REVIEW in review.md
 
-  5. LAUNCH /builder subagent:
-     Pass: task_brief (constructed in step 3)
-     Wait for: AWAITING_REVIEW status in REVIEW.md
-
-  6. LAUNCH /reviewer subagent:
+  6. LAUNCH /reviewer subagent
      review_context:
        component:      [row.Scope]
        mode:           FULL_REVIEW
        ac_items:       [row.AC Items]
        iteration:      1
        open_fix_items: []
-     Wait for: verdict in REVIEW.md
+     Wait for: verdict in review.md
 
-  7. CAPTURE VERDICT from REVIEW.md
+  7. CAPTURE VERDICT from review.md
 
   8. IF APPROVED:
-     → Record component APPROVED in SQLite:
-       INSERT INTO build_manifest_state (component, status, iteration)
-       VALUES ('[component]', 'APPROVED', [N]);
-     → Add component files to approved file registry
+     → Record APPROVED in SQLite build_manifest_state
      → Continue to next row
 
   9. IF CHANGES_REQUIRED:
-     → Read structured fix items from REVIEW.md
+     → Read fix items from review.md
      → Increment iteration counter
-     → IF iteration > config.max_iterations:
-          → ESCALATE: halt this component, log to SQLite, report to human
-          → Continue to next unblocked row
+     → IF iteration > config.max_iterations → ESCALATE
      → CONSTRUCT updated task brief:
-          mode:       FIX_ONLY
-          fix_items:  [fix items from REVIEW.md]
+          mode:        FIX_ONLY
+          fix_items:   [fix items from review.md]
           passing_acs: [updated from SQLite]
-          iteration:  [N+1]
-     → LAUNCH /tester subagent (COMPONENT mode) with updated iteration
-     → LAUNCH /builder subagent with updated task brief
-     → LAUNCH /reviewer subagent:
+          iteration:   [N+1]
+     → RESET review.md (copy template, set new iteration)
+     → LAUNCH /builder with updated task brief
+     → LAUNCH /reviewer:
           mode:           DELTA_REVIEW
           open_fix_items: [fix item IDs from previous iteration]
           iteration:      [N+1]
@@ -154,37 +167,35 @@ END FOR
 
 ### Phase 2 — Integration Pass
 
-Once all component rows are APPROVED:
+Once all Build Manifest rows are APPROVED:
 
-**Step 1 — Construct integration task brief**
+**Step 1 — Initialise integration files**
+
+```
+copy .cursor/skills/references/review.md     → ./review.md
+copy .cursor/skills/references/e2e_result.md → ./e2e_result.md
+```
+
+Set both files: status=IN_PROGRESS, iteration=1, component=Integration.
+
+**Step 2 — Launch /builder subagent**
+
 ```
 task_brief:
   component:      Integration
   mode:           FULL_BUILD
-  ac_items:       [Global AC items: AC-G1, AC-G2, AC-G3 + any remaining AC items]
-  tac_items:      [all TAC items]
+  ac_items:       [Global AC items + any remaining AC items from SPEC.md § 8]
+  tac_items:      [all TAC items from SPEC.md § 9]
   files_in_scope: all
-  data_testids:   —
   passing_acs:    [all component-level ACs already APPROVED]
   fix_items:      []
   iteration:      1
 ```
 
-**Step 2 — Launch /builder subagent**
-Task: "Wire all components together per ARCHITECTURE.md. Ensure all API endpoints, SSE events, and state hydration work end-to-end."
-Wait for: AWAITING_REVIEW status in REVIEW.md
+Wait for: AWAITING_REVIEW in review.md.
 
-**Step 3 — Launch /tester subagent (INTEGRATION mode)**
-```
-test_context:
-  mode:      INTEGRATION
-  tac_items: [all TAC items from SPEC.md § 9]
-  iteration: [N]
-```
-Wait for: TEST_RESULTS.md updated with verdict.
-Run test levels declared in FOUNDATION.md Test Toolchain only.
+**Step 3 — Launch /reviewer subagent**
 
-**Step 4 — Launch /reviewer subagent**
 ```
 review_context:
   component:      Integration
@@ -193,54 +204,93 @@ review_context:
   iteration:      [N]
   open_fix_items: []
 ```
-Wait for: verdict in REVIEW.md
 
-**Step 5 — Aggregate verdicts**
-- Reviewer APPROVED + Tester APPROVED → proceed to Phase 3 **SHIPPED**
-- Either CHANGES_REQUIRED → loop builder with combined fix items from both
-- Apply same `config.max_iterations` limit — escalate to human if exceeded
+Wait for: verdict in review.md.
+
+**Step 4 — Launch /e2e-agent subagent**
+
+```
+test_context:
+  mode:      INTEGRATION
+  tac_items: [all TAC-E items from SPEC.md § 9]
+  iteration: [N]
+```
+
+Wait for: e2e_result.md updated with verdict.
+
+**Step 5 — Aggregate verdicts and route**
+
+Read reviewer verdict from `review.md`.
+Read E2E verdict and routing recommendation from `e2e_result.md`.
+
+```
+IF reviewer=APPROVED AND e2e=APPROVED:
+  → Phase 3: SHIPPED
+
+IF reviewer=CHANGES_REQUIRED OR e2e=CHANGES_REQUIRED:
+  → Read routing recommendation from e2e_result.md:
+
+    TARGETED_REBUILD:
+      → Re-run component loop for suspected component only
+      → Then re-run integration pass
+
+    INTEGRATION_REBUILD:
+      → Re-run integration builder (Step 2) only
+      → Approved component rows are NOT re-run
+
+    ESCALATE:
+      → Halt, report to human with full failure analysis from e2e_result.md
+
+  → Apply config.max_iterations limit — escalate if exceeded
+```
 
 ---
 
 ### Phase 3 — Ship Report
 
 ```
-✅ SHIPPED: [Project name from SPEC.md Overview]
-Components:    [N] built, [N] approved
-Iterations:    [per-component breakdown from SQLite]
-AC Pass Rate:  [X]/[total] — read from SQLite ac_results
-TAC Pass Rate: [X]/[total] — read from TEST_RESULTS.md
-Visual Match:  [X]% — read from SQLite metrics (if has_frontend + has_wireframe)
-Console Errors: 0 (if has_frontend)
+✅ SHIPPED: [project name from SPEC.md § 2]
+Components:   [N] built, [N] approved
+Iterations:   [per-component breakdown from SQLite]
+AC Pass:      [X]/[total] — from SQLite ac_results
+TAC Pass:     [X]/[total] — from e2e_result.md
+Visual Match: [X]% — from SQLite metrics
+Console Errors: 0
 ```
 
-Or if escalated:
+Or on escalation:
+
 ```
-⚠️ ESCALATED: [Component name]
-Reason: config.max_iterations ([N]) reached
-Last failures: [AC items from SQLite]
+⚠️ ESCALATED: [component or Integration]
+Reason:        max_iterations ([config.max_iterations]) reached
+               OR E2E confidence too low for auto-routing
+Regressions:   [list from SQLite]
+New Failures:  [list from review.md or e2e_result.md]
 Action needed: human review
 ```
 
+---
+
 ## Files Reference
-| File | Purpose |
-|------|---------|
-| `SPEC.md` | Build Manifest + AC items + TAC items + data-testid |
-| `references/ARCHITECTURE.md` | API contracts + event types + logging + // SWAP conventions |
-| `references/FOUNDATION.md` | Tech stack + test toolchain + npm scripts + ports |
-| `references/DESIGN_TOKENS.md` | All visual values as CSS variables (optional) |
-| `REVIEW.md` | Current iteration state — builder output + reviewer feedback |
-| `TEST_RESULTS.md` | Tester output — appended per iteration, never overwritten |
-| `review_history.db` | Full history: AC results, metrics, build manifest state |
+
+| File | Location | Purpose |
+|------|----------|---------|
+| `SPEC.md` | project root | Single entry point — orchestrator reads only this |
+| `review.md` | project root | Current iteration state — Builder + Reviewer |
+| `e2e_result.md` | project root | E2E Agent output + routing recommendation |
+| `review_history.db` | project root | Full history — AC results, metrics, manifest state |
+| `review.md` (template) | `.cursor/skills/references/` | Copied to root each iteration |
+| `e2e_result.md` (template) | `.cursor/skills/references/` | Copied to root each integration pass |
+| `init-db.sql` (schema) | `.cursor/skills/references/` | Run once to create `review_history.db` |
 
 ## Rules
-- Always read Build Manifest from SPEC.md — never hardcode component order
-- Always validate reference file schema in Phase 0 before any build begins
-- Always construct a scoped task brief — never give builder open-ended instructions
-- Always launch Tester before Builder in component loop — unit tests gate the build
-- Never skip the Reviewer — every component must be verified
-- Never skip the Tester on integration pass
-- Never exceed config.max_iterations per component without human approval
-- Never hardcode ports, commands, AC IDs, TAC IDs, or scenario IDs
-- E2E tests run in integration pass only — not per component loop
-- Visual match threshold comes from config block — not from agent files
+
+- `SPEC.md` is the only file the orchestrator reads directly
+- Never hardcode values that exist in SPEC.md — always read at runtime
+- Never skip the reviewer — every component must be verified
+- Never skip the E2E agent on integration pass
+- Always reset `review.md` from template before each iteration — never append
+- Always reset `e2e_result.md` from template before each integration pass
+- `config.max_iterations` is the only hardcoded limit
+- E2E routing recommendation drives rebuild decision — targeted vs integration vs escalate
+- Escalation report must distinguish regressions from new failures

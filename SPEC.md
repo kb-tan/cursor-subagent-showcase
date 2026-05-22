@@ -1,7 +1,25 @@
-
 # SPEC.md
 
+## Table of Contents
+
+| # | Section | Purpose |
+|---|---------|---------|
+| 1 | References | Pointers to all supporting documents |
+| 2 | Overview | What this application is |
+| 3 | Annotation Zones | Visual zones in the wireframe |
+| 4 | Testability | data-testid map for all interactive elements |
+| 5 | Build Manifest | Component delivery order for orchestrator |
+| 6 | Components | Per-component layout, states, behaviour |
+| 7 | User Scenarios | End-to-end usage flows |
+| 8 | Acceptance Criteria | Binary PASS/FAIL checklist for Reviewer |
+| 9 | Test Acceptance Criteria | Binary PASS/FAIL checklist for Test Agent |
+| 10 | Build Environment | Surfaced from FOUNDATION.md — Builder reads here only |
+| 11 | Runtime Contract | Surfaced from ARCHITECTURE.md — Test Agent reads here only |
+
+---
+
 ## 1. References
+
 | Document | Path | Contains |
 |----------|------|---------|
 | Foundation | `./references/FOUNDATION.md` | Stack, scaffold, dev server, scripts, test toolchain |
@@ -12,19 +30,24 @@
 ---
 
 ## 2. Overview
-A full-stack agentic TODO application. Users interact via a single always-visible chat input bar to create, update, delete, and query todo items. Agent responses surface as toast notifications. The agent groups tasks into named plans (tabs). Users can also manually add todo items without using the agent. Conversation is stateless.
 
-**Stack:** React 18 + TypeScript · Node.js + Express · LangGraph.js · OpenAI SDK · p-queue · SQLite · SSE
+A full-stack agentic TODO application. Users interact via a single always-visible chat
+input bar to create, update, delete, and query todo items. Agent responses surface as
+toast notifications. The agent groups tasks into named plans (tabs). Users can also
+manually add todo items without using the agent. Conversation is stateless.
+
+**Stack:** React 18 + TypeScript · Node.js + Express · LangGraph.js · p-queue · SQLite · SSE
 
 ---
 
 ## 3. Annotation Zones
+
 | Zone | Element |
 |------|---------|
 | [A] | App Header (title + dark mode toggle) |
 | [B] | Chat Input Bar (always visible, below header) |
 | [C] | Toast Notification (agent reply, auto-dismisses) |
-| [E] | Plan Tabs (one tab per plan group, with delete group button) |
+| [E] | Plan Tabs (one tab per plan group) |
 | [F] | Todo List (vertical, filtered by active tab) |
 | [G] | Todo Item (checkbox + title + date + labels + delete) |
 | [H] | Item Labels (min 1, max 3 AI-generated tags) |
@@ -35,6 +58,7 @@ A full-stack agentic TODO application. Users interact via a single always-visibl
 ---
 
 ## 4. Testability
+
 > Builder adds these. Reviewer and Test Agent use them as selectors.
 > Never use CSS class or element selectors in tests — always data-testid.
 
@@ -49,7 +73,6 @@ A full-stack agentic TODO application. Users interact via a single always-visibl
 | `Toast` dismiss | `toast-dismiss` |
 | `PlanTabs` | `plan-tabs` |
 | `PlanTab` (each) | `plan-tab-{planId}` |
-| `PlanDeleteButton` (each tab) | `plan-delete-{planId}` |
 | `ManualInput` | `manual-input` |
 | `TodoList` | `todo-list` |
 | `TodoItem` (each) | `todo-item-{taskId}` |
@@ -63,29 +86,26 @@ A full-stack agentic TODO application. Users interact via a single always-visibl
 ---
 
 ## 5. Build Manifest
-> SKILL.md reads this table to partition work component by component.
-> `files` — exact paths the builder may create or modify for this row only.
-> `ac_items` — AC IDs scoped to this row. Builder implements, Reviewer checks.
-> `tac_items` — TAC IDs scoped to this row. Tester runs these in component mode.
-> `data_testids` — testids builder must add. Reviewer verifies presence.
-> `depends_on` — order numbers that must be APPROVED before this row starts.
 
-| Order | Scope | Components | Files | AC Items | TAC Items | Data-testids | Depends On |
-|-------|-------|------------|-------|----------|-----------|--------------|------------|
-| 1 | Header + Input | `AppHeader`, `ChatInputBar`, `SendButton` | `src/components/AppHeader/...`, `src/components/ChatInputBar/...` | AC-01–AC-08 | TAC-U1, TAC-U2, TAC-U3, TAC-U4 | `app-header`, `app-title`, `dark-mode-toggle`, `chat-input`, `send-button` | none |
-| 2 | Toast | `Toast` | `src/components/Toast/...` | AC-09–AC-14 | TAC-U1, TAC-U2, TAC-U3, TAC-U4 | `toast`, `toast-dismiss` | none |
-| 3 | Plan Tabs | `PlanTabs`, `PlanTab` | `src/components/PlanTabs/...` | AC-15–AC-19 | TAC-U1, TAC-U3, TAC-U4 | `plan-tabs`, `plan-tab-{planId}` | none |
-| 4 | Todo Item | `TodoItem`, `ItemCheckbox`, `ItemContent`, `ItemTitle`, `ItemDateSubline`, `ItemLabels`, `ItemDeleteButton` | `src/components/TodoItem/...` | AC-23–AC-31 | TAC-U1, TAC-U2, TAC-U3, TAC-U4 | `todo-item-{taskId}`, `item-checkbox-{taskId}`, `item-delete-{taskId}` | none |
-| 5 | List + Footer | `TodoList`, `ManualInput`, `FooterBar`, `EmptyState` | `src/components/TodoList/...`, `src/components/FooterBar/...`, `src/components/EmptyState/...` | AC-20–AC-22, AC-32–AC-36 | TAC-U1, TAC-U2, TAC-U3 | `todo-list`, `manual-input`, `footer-bar`, `filter-tab-{all\|active\|completed}`, `clear-completed`, `empty-state` | Order 4 |
-| 6 | Backend | API, agent, queue, SSE, SQLite, dispatch, LLM integration | `server/...`, `src/types/events.ts`, `src/dispatch/dispatchLayer.ts`, `scripts/init-db.sql` | AC-37–AC-41, AC-50–AC-53 | TAC-A1, TAC-A2 | — | none |
-| 8 | Plan Delete | Plan delete button, confirmation dialog | `src/components/PlanTab/...` | AC-54–AC-59 | TAC-U1, TAC-U3 | `plan-delete-{planId}` | Order 3 |
-| 7 | Integration | Full stack wiring | all | AC-G1, AC-G2, AC-G3, all remaining AC | TAC-E1, TAC-E2, TAC-E3 | — | Orders 1–6, 8 |
+> Orchestrator reads this to partition the build component by component.
+> One `/shipit` is enough — SKILL.md drives the loop from this table.
+
+| Order | Scope | Components | AC Items | Dependencies |
+|-------|-------|------------|----------|--------------|
+| 1 | Header + Input | `AppHeader`, `ChatInputBar`, `SendButton` | AC-01–AC-08 | none |
+| 2 | Toast | `Toast` | AC-09–AC-14 | none |
+| 3 | Plan Tabs | `PlanTabs`, `PlanTab` | AC-15–AC-19 | none |
+| 4 | Todo Item | `TodoItem`, `ItemCheckbox`, `ItemContent`, `ItemTitle`, `ItemDateSubline`, `ItemLabels`, `ItemDeleteButton` | AC-23–AC-31 | none |
+| 5 | List + Footer | `TodoList`, `ManualInput`, `FooterBar`, `EmptyState` | AC-20–AC-22, AC-32–AC-36 | Order 4 |
+| 6 | Backend | API, agent, queue, SSE, SQLite, dispatch | AC-37–AC-52 | none |
+| 7 | Integration | Full stack wiring | all AC | Orders 1–6 |
 
 ---
 
 ## 6. Components
 
 ### Component Decomposition
+
 ```
 App
 ├── AppHeader [A]
@@ -96,7 +116,6 @@ App
 ├── Toast [C]
 ├── PlanTabs [E]
 │   └── PlanTab (one per plan)
-│       └── PlanDeleteButton
 ├── ManualInput
 ├── TodoList [F]
 │   ├── EmptyState [K]
@@ -116,15 +135,21 @@ App
 ---
 
 ### AppHeader `[A]`
+
 **Layout:** Full width, fixed top. Gradient background. Title `"TODO"` left, dark mode toggle right.
+
 **Tokens:** `color-header-gradient-start`, `color-header-gradient-end`, `font-size-header`, `font-weight-bold`, `color-header-text`, `letter-spacing-header`
+
 **States:** Light mode · Dark mode
 
 ---
 
 ### ChatInputBar `[B]`
+
 **Layout:** Always visible below header. Full width single line. Send button right-aligned, active only when input non-empty.
+
 **Tokens:** `color-text-placeholder`, `color-bg-input`, `input-border-radius`
+
 **Behaviour:**
 - Send on Enter or Send button click → POST to `/api/chat`
 - Input clears immediately after send
@@ -133,9 +158,13 @@ App
 ---
 
 ### Toast `[C]`
+
 **Layout:** Fixed, bottom-centre. Dismiss (×) right-aligned.
+
 **Tokens:** `color-bg-toast`, `color-bg-toast-error`, `color-text-toast`, `font-size-body`, `toast-border-radius`, `toast-padding`, `toast-duration`, `transition-toast`
+
 **States:** Progress · Reply · Error
+
 **Behaviour:**
 - Triggered by: `JOB_PROGRESS`, `CHAT_REPLY`, `JOB_FAILED`
 - Auto-dismisses after `token(toast-duration)` ms — all states including progress
@@ -144,36 +173,48 @@ App
 ---
 
 ### PlanTabs `[E]`
-**Layout:** Horizontal row below ChatInputBar. "All" tab always first. Each plan tab has a delete button (×) on the right side of the tab.
-**Tokens:** `color-tab-active-text`, `color-tab-active-border`, `font-size-tab`, `color-text-tab`, `color-delete-button-hover`
+
+**Layout:** Horizontal row below ChatInputBar. "All" tab always first.
+
+**Tokens:** `color-tab-active-text`, `color-tab-active-border`, `font-size-tab`, `color-text-tab`
+
 **States:** No plans (All only) · Plans exist
+
 **Behaviour:**
 - New tab on `PLAN_CREATED` — auto-focuses
 - Tab click filters TodoList
 - Tab switch does not interrupt agent jobs
-- Delete button (×) visible on plan tab hover only (not on "All" tab)
-- Clicking delete button → confirmation dialog → DELETE `/api/plans/:id` → all tasks in plan removed → tab removed → auto-focus "All" tab
 
 ---
 
 ### ManualInput
+
 **Layout:** Below PlanTabs, above TodoList.
+
 **Tokens:** `color-text-placeholder`, `color-bg-input`, `input-border-radius`
+
 **Behaviour:** Enter → POST to `/api/tasks`. Task assigned to active plan (or "General"). Label: `"manual"`, date: today.
 
 ---
 
 ### TodoList `[F]`
+
 **Layout:** Vertical, full width. Sorted by date ascending.
+
 **Tokens:** `color-bg-list`
+
 **Behaviour:** Filtered by active PlanTab + active FooterBar filter.
 
 ---
 
 ### TodoItem `[G]`
+
 **Layout:** Full width row. Checkbox left, content centre, delete right.
+
 **Tokens:** `todo-checkbox-size`, `color-checkbox-border`, `color-border-item`, `spacing-item-padding`, `color-text-completed`, `color-checkbox-checked`, `color-bg-highlighted`, `color-border-highlight`, `color-bg-item-hover`
+
 **States:** Default · Completed · Highlighted · Hover
+
 **Behaviour:**
 - Checkbox click → toggle completed
 - × click → DELETE `/api/tasks/:id`
@@ -183,37 +224,47 @@ App
 ---
 
 ### ItemLabels `[H]`
+
 **Layout:** Horizontal pills below date. Min 1, max 3.
+
 **Tokens:** `font-size-label`, `badge-label-padding`, `badge-label-border-radius`, `color-label-1`, `color-label-2`, `color-label-3`
 
 ---
 
 ### ItemDateSubline `[I]`
+
 **Layout:** Below title, above labels. Format: `"Mon DD MMM YYYY"`
+
 **Tokens:** `font-size-subline`, `color-text-muted`
 
 ---
 
 ### FooterBar `[J]`
+
 **Layout:** Pinned bottom. Count left, filters centre, Clear Completed right.
+
 **Tokens:** `font-size-footer`, `color-text-muted`, `color-bg-card`, `color-border-divider`
+
 **Behaviour:** Filter click → filter list. Clear Completed → remove all completed items.
 
 ---
 
 ### EmptyState `[K]`
+
 **Layout:** Centred in list area. Visible only when filtered list is empty.
+
 **Text:** `"Ask me to create a plan, or add a todo manually"`
+
 **Tokens:** `color-text-muted`, `font-size-body`
 
 ---
 
 ## 7. User Scenarios
+
 > Test Agent reads this section to determine E2E test coverage.
 > One E2E test file per scenario. Scenario ID is the test file identifier.
 
 ### US1 — Agent creates a plan with tasks
-**TAC mapping:** TAC-E1
 1. Empty app — EmptyState visible
 2. User sends `"create 4 week marathon plan"`
 3. Toast: `"Working on it..."`
@@ -222,195 +273,177 @@ App
 6. `JOB_COMPLETE` → Toast: `"Done! Created 28 tasks"`
 
 ### US2 — Tab switching during generation
-**TAC mapping:** TAC-E1
 1. US1 in progress — tasks still populating
 2. User clicks another tab
 3. User switches back — more tasks have appeared
 
 ### US3 — Agent targeted update
-**TAC mapping:** TAC-E1
 1. User sends `"add a rest day on week 2 day 3"`
 2. Single `TASK_CREATED` at correct date position
 3. Toast confirms
 
 ### US4 — Highlight and delete
-**TAC mapping:** TAC-E1
 1. User sends `"what is my next todo item?"`
 2. `TASK_HIGHLIGHTED` → item highlighted
 3. User sends `"help me delete it"`
 4. Frontend sends `context.highlightedTaskId`
 5. `TASK_DELETED` → item removed, toast confirms
 
-### US5 — Delete entire task group
-**TAC mapping:** TAC-E1
-1. User has multiple plans with tasks
-2. User hovers over a plan tab
-3. Delete button (×) appears on the tab
-4. User clicks delete button
-5. Confirmation dialog appears: `"Delete plan and all its tasks?"`
-6. User confirms
-7. `PLAN_DELETED` event emitted → tab removed, all tasks in plan removed
-8. "All" tab auto-focuses
-9. Toast confirms: `"Plan deleted with X tasks"`
-
 ---
 
 ## 8. Acceptance Criteria
+
 > Reviewer reads this section. Every item is binary: PASS or FAIL.
-> `review_type`: `static` (code inspection) | `visual` (browser/token check) | `both`
-> `severity`: `BLOCKING` (must pass for APPROVED) | `WARNING` (reported but does not block)
+> Visual items: reference wireframe in § 1. References.
+> Token items: reference DESIGN_TOKENS.md in § 1. References.
+> Backend items: reference ARCHITECTURE.md § 2 and § 6.
 
 ### [A] AppHeader
-| ID | Description | review_type | severity |
-|----|-------------|-------------|----------|
-| AC-01 | Title `"TODO"` with correct font, weight, letter-spacing tokens | visual | BLOCKING |
-| AC-02 | Gradient background using correct tokens | visual | BLOCKING |
-| AC-03 | Dark mode toggle: moon icon, right-aligned | both | BLOCKING |
+- [ ] **AC-01** Title `"TODO"` with correct font, weight, letter-spacing tokens
+- [ ] **AC-02** Gradient background using correct tokens
+- [ ] **AC-03** Dark mode toggle: moon icon, right-aligned
 
 ### [B] ChatInputBar
-| ID | Description | review_type | severity |
-|----|-------------|-------------|----------|
-| AC-04 | Always visible, not collapsible | static | BLOCKING |
-| AC-05 | Placeholder in `token(color-text-placeholder)` | visual | BLOCKING |
-| AC-06 | Input clears on send | both | BLOCKING |
-| AC-07 | Input + button disabled while processing (spinner shown) | both | BLOCKING |
-| AC-08 | Send button inactive when input empty | both | BLOCKING |
+- [ ] **AC-04** Always visible, not collapsible
+- [ ] **AC-05** Placeholder in `token(color-text-placeholder)`
+- [ ] **AC-06** Input clears on send
+- [ ] **AC-07** Input + button disabled while processing (spinner shown)
+- [ ] **AC-08** Send button inactive when input empty
 
 ### [C] Toast
-| ID | Description | review_type | severity |
-|----|-------------|-------------|----------|
-| AC-09 | Appears on `JOB_PROGRESS`, `CHAT_REPLY`, `JOB_FAILED` | both | BLOCKING |
-| AC-10 | Auto-dismisses after `token(toast-duration)` ms — all states | both | BLOCKING |
-| AC-11 | Dismissible via × | both | BLOCKING |
-| AC-12 | One at a time — new replaces current | both | BLOCKING |
-| AC-13 | Error state uses `token(color-bg-toast-error)` | visual | BLOCKING |
-| AC-14 | Entrance/exit uses `token(transition-toast)` | visual | WARNING |
+- [ ] **AC-09** Appears on `JOB_PROGRESS`, `CHAT_REPLY`, `JOB_FAILED`
+- [ ] **AC-10** Auto-dismisses after `token(toast-duration)` ms — all states
+- [ ] **AC-11** Dismissible via ×
+- [ ] **AC-12** One at a time — new replaces current
+- [ ] **AC-13** Error state uses `token(color-bg-toast-error)`
+- [ ] **AC-14** Entrance/exit uses `token(transition-toast)`
 
 ### [E] PlanTabs
-| ID | Description | review_type | severity |
-|----|-------------|-------------|----------|
-| AC-15 | Only "All" on initial load | both | BLOCKING |
-| AC-16 | New tab on `PLAN_CREATED` | both | BLOCKING |
-| AC-17 | New tab auto-focuses | both | BLOCKING |
-| AC-18 | Active tab has `token(color-tab-active-border)` bottom border | visual | BLOCKING |
-| AC-19 | Tab switch does not interrupt agent jobs | static | BLOCKING |
-| AC-54 | Each plan tab has delete button (×) visible on hover (not on "All" tab) | both | BLOCKING |
-| AC-55 | Delete button uses `data-testid="plan-delete-{planId}"` | static | BLOCKING |
-| AC-56 | Clicking delete shows confirmation dialog before deleting | both | BLOCKING |
-| AC-57 | Deleting plan removes all tasks in that plan and the plan itself | both | BLOCKING |
-| AC-58 | After plan deletion, "All" tab auto-focuses | both | BLOCKING |
+- [ ] **AC-15** Only "All" on initial load
+- [ ] **AC-16** New tab on `PLAN_CREATED`
+- [ ] **AC-17** New tab auto-focuses
+- [ ] **AC-18** Active tab has `token(color-tab-active-border)` bottom border
+- [ ] **AC-19** Tab switch does not interrupt agent jobs
 
 ### [F] TodoList
-| ID | Description | review_type | severity |
-|----|-------------|-------------|----------|
-| AC-20 | Sorted by date ascending | both | BLOCKING |
-| AC-21 | Filtered by active tab and footer filter | both | BLOCKING |
-| AC-22 | Background `token(color-bg-list)` | visual | BLOCKING |
+- [ ] **AC-20** Sorted by date ascending
+- [ ] **AC-21** Filtered by active tab and footer filter
+- [ ] **AC-22** Background `token(color-bg-list)`
 
 ### [G] TodoItem
-| ID | Description | review_type | severity |
-|----|-------------|-------------|----------|
-| AC-23 | Completed: strikethrough + `token(color-checkbox-checked)` | visual | BLOCKING |
-| AC-24 | Highlighted: `token(color-bg-highlighted)` + 3px `token(color-border-highlight)` left border | visual | BLOCKING |
-| AC-25 | Delete × visible on hover only | both | BLOCKING |
-| AC-26 | Checkbox toggles completed state | both | BLOCKING |
-| AC-27 | × deletes item immediately | both | BLOCKING |
+- [ ] **AC-23** Completed: strikethrough + `token(color-checkbox-checked)`
+- [ ] **AC-24** Highlighted: `token(color-bg-highlighted)` + 3px `token(color-border-highlight)` left border
+- [ ] **AC-25** Delete × visible on hover only
+- [ ] **AC-26** Checkbox toggles completed state
+- [ ] **AC-27** × deletes item immediately
 
 ### [H] ItemLabels
-| ID | Description | review_type | severity |
-|----|-------------|-------------|----------|
-| AC-28 | Min 1, max 3 pills per item | both | BLOCKING |
-| AC-29 | Correct border-radius and colour cycle tokens | visual | BLOCKING |
+- [ ] **AC-28** Min 1, max 3 pills per item
+- [ ] **AC-29** Correct border-radius and colour cycle tokens
 
 ### [I] ItemDateSubline
-| ID | Description | review_type | severity |
-|----|-------------|-------------|----------|
-| AC-30 | Format `"Mon DD MMM YYYY"` | both | BLOCKING |
-| AC-31 | Correct subline font and muted colour tokens | visual | BLOCKING |
+- [ ] **AC-30** Format `"Mon DD MMM YYYY"`
+- [ ] **AC-31** Correct subline font and muted colour tokens
 
 ### [J] FooterBar
-| ID | Description | review_type | severity |
-|----|-------------|-------------|----------|
-| AC-32 | Count shows incomplete items only | both | BLOCKING |
-| AC-33 | Filter tabs work correctly | both | BLOCKING |
-| AC-34 | Clear Completed removes all completed items | both | BLOCKING |
+- [ ] **AC-32** Count shows incomplete items only
+- [ ] **AC-33** Filter tabs work correctly
+- [ ] **AC-34** Clear Completed removes all completed items
 
 ### [K] EmptyState
-| ID | Description | review_type | severity |
-|----|-------------|-------------|----------|
-| AC-35 | Visible when filtered list is empty | both | BLOCKING |
-| AC-36 | Correct text and muted style | visual | BLOCKING |
+- [ ] **AC-35** Visible when filtered list is empty
+- [ ] **AC-36** Correct text and muted style
 
 ### Backend — API
-| ID | Description | review_type | severity |
-|----|-------------|-------------|----------|
-| AC-37 | `/api/chat` accepts and returns correct shape (see ARCHITECTURE.md § 2) | static | BLOCKING |
-| AC-38 | `/api/events` opens SSE stream with 15s keep-alive ping | static | BLOCKING |
-| AC-39 | `/api/tasks` POST creates manual task | static | BLOCKING |
-| AC-40 | `/api/tasks/:id` DELETE removes task | static | BLOCKING |
-| AC-41 | `/api/tasks/:id` PATCH updates task | static | BLOCKING |
-| AC-59 | `/api/plans/:id` DELETE removes plan and all associated tasks | static | BLOCKING |
+- [ ] **AC-37** `/api/chat` accepts and returns correct shape (see ARCHITECTURE.md § 2)
+- [ ] **AC-38** `/api/events` opens SSE stream with 15s keep-alive ping
+- [ ] **AC-39** `/api/tasks` POST creates manual task
+- [ ] **AC-40** `/api/tasks/:id` DELETE removes task
+- [ ] **AC-41** `/api/tasks/:id` PATCH updates task
 
 ### Backend — Agent
-| ID | Description | review_type | severity |
-|----|-------------|-------------|----------|
-| AC-42 | `PLAN_CREATED` emitted before any `TASK_CREATED` for that plan | static | BLOCKING |
-| AC-43 | `TASK_CREATED` emitted individually, not batched | static | BLOCKING |
-| AC-44 | Agent resolves `"it"` from `context.highlightedTaskId` | static | BLOCKING |
-| AC-45 | Agent never assigns tasks across plans | static | BLOCKING |
-| AC-46 | `CHAT_REPLY` is always the final event per job | static | BLOCKING |
-| AC-50 | Agent connects to LLM via LiteLLM gateway using OpenAI SDK | static | BLOCKING |
-| AC-51 | Agent uses `LLM_MODEL`, `LLM_ENDPOINT`, `LLM_API_KEY` environment variables | static | BLOCKING |
-| AC-52 | Agent performs LLM-based intent classification (replaces keyword matching) | static | BLOCKING |
-| AC-53 | Agent generates natural language responses via LLM for `CHAT_REPLY` events | static | BLOCKING |
+- [ ] **AC-42** `PLAN_CREATED` emitted before any `TASK_CREATED` for that plan
+- [ ] **AC-43** `TASK_CREATED` emitted individually, not batched
+- [ ] **AC-44** Agent resolves `"it"` from `context.highlightedTaskId`
+- [ ] **AC-45** Agent never assigns tasks across plans
+- [ ] **AC-46** `CHAT_REPLY` is always the final event per job
 
 ### Backend — Queue + SSE
-| ID | Description | review_type | severity |
-|----|-------------|-------------|----------|
-| AC-47 | p-queue concurrency: 1 per session | static | BLOCKING |
-| AC-48 | Job states: `QUEUED → IN_PROGRESS → DONE \| FAILED` | static | BLOCKING |
-| AC-49 | SSE keep-alive ping every 15 seconds | static | BLOCKING |
+- [ ] **AC-47** p-queue concurrency: 1 per session
+- [ ] **AC-48** Job states: `QUEUED → IN_PROGRESS → DONE | FAILED`
+- [ ] **AC-49** SSE keep-alive ping every 15 seconds
 
 ### Global
-> Checked during Integration Pass (Order 7) only — not in component loops.
+- [ ] **AC-50** No hardcoded visual values — all use design tokens
+- [ ] **AC-51** No console errors on initial load
+- [ ] **AC-52** `src/types/events.ts` is the only event type definition
 
-| ID | Description | review_type | severity |
-|----|-------------|-------------|----------|
-| AC-G1 | No hardcoded visual values — all use design tokens | static | BLOCKING |
-| AC-G2 | No console errors on initial load | both | BLOCKING |
-| AC-G3 | `src/types/events.ts` is the only event type definition | static | BLOCKING |
+---
+
+## 10. Build Environment
+
+> Surfaced from FOUNDATION.md for Builder Agent.
+> Builder reads this section — never reads FOUNDATION.md directly.
+> If any value here conflicts with FOUNDATION.md, FOUNDATION.md wins — update this section.
+
+| What | Where / How |
+|------|-------------|
+| Start frontend | Run `dev:frontend` script from FOUNDATION.md § NPM Scripts |
+| Start backend | Run `dev:backend` script from FOUNDATION.md § NPM Scripts |
+| Verify backend alive | GET health check path from FOUNDATION.md § Dev Server |
+| Install dependencies | Run `install` script if `node_modules` missing |
+| Initialise database | Run `init-db` script from FOUNDATION.md § NPM Scripts |
+| Required files | See FOUNDATION.md § Project Scaffold |
+| File structure | See FOUNDATION.md § Project File Structure |
+| Styling rule | All values via CSS variables — never hardcode. Tokens in `references/DESIGN_TOKENS.md` |
+| Event types | Single definition at path declared in ARCHITECTURE.md § Event Envelope — never redefine |
+| Logging | Use function names and format declared in ARCHITECTURE.md § Logging |
+
+---
+
+## 11. Runtime Contract
+
+> Surfaced from ARCHITECTURE.md for Test Agent.
+> Test Agent reads this section — never reads ARCHITECTURE.md directly.
+> If any value here conflicts with ARCHITECTURE.md, ARCHITECTURE.md wins — update this section.
+
+| What | Where |
+|------|-------|
+| API endpoints to contract-test | ARCHITECTURE.md § API Endpoints — one test per endpoint |
+| Expected request/response shapes | ARCHITECTURE.md § API Endpoints |
+| SSE ping interval | ARCHITECTURE.md § Job Queue |
+| E2E scenarios to run | SPEC.md § 7. User Scenarios — one test file per scenario ID |
+| Selectors for E2E | SPEC.md § 4. Testability — always data-testid, never CSS class |
+| TAC items to verify | SPEC.md § 9. Test Acceptance Criteria |
+| Test commands | FOUNDATION.md § NPM Scripts |
+| Console error detection | Any `[ERROR]` log during E2E = TAC-E3 FAIL (format in ARCHITECTURE.md § Logging) |
 
 ---
 
 ## 9. Test Acceptance Criteria
+
 > Test Agent reads this section to determine what to verify and how to report.
 > Commands come from FOUNDATION.md § 4. NPM Scripts.
-> Scenario IDs come from § 7. User Scenarios.
-> Selectors come from § 4. Testability.
+> Scenario IDs come from § 7. User Scenarios above.
+> Selectors come from § 4. Testability above.
 
 ### Unit Tests
 > Run: `npm test`. One test file per component, co-located.
 
-| ID | Description | test_level | component | maps_to_ac |
-|----|-------------|------------|-----------|------------|
-| TAC-U1 | All components render without errors | unit | all | AC-01, AC-04, AC-09, AC-15, AC-20, AC-23, AC-32, AC-35 |
-| TAC-U2 | Keyboard interactions work (Enter, Backspace, Escape) | unit | ChatInputBar, ManualInput, FooterBar | AC-06, AC-08 |
-| TAC-U3 | State transitions correct (check, highlight, dismiss) | unit | TodoItem, Toast, PlanTabs | AC-10, AC-11, AC-23, AC-24, AC-26 |
-| TAC-U4 | Correct event type and payload dispatched per interaction | unit | ChatInputBar, TodoItem, PlanTabs | AC-09, AC-16, AC-27 |
+- [ ] **TAC-U1** All components render without errors
+- [ ] **TAC-U2** Keyboard interactions work (Enter, Backspace, Escape)
+- [ ] **TAC-U3** State transitions correct (check, highlight, dismiss)
+- [ ] **TAC-U4** Correct event type and payload dispatched per interaction
 
 ### API Contract Tests
 > Run: `npm run test:api`. One test per endpoint in ARCHITECTURE.md § 2.
 
-| ID | Description | test_level | component | maps_to_ac |
-|----|-------------|------------|-----------|------------|
-| TAC-A1 | All endpoints return correct HTTP status and response shape | api | Backend | AC-37, AC-38, AC-39, AC-40, AC-41 |
-| TAC-A2 | Side effects verified (e.g. task in SQLite after POST) | api | Backend | AC-39, AC-40, AC-41 |
+- [ ] **TAC-A1** All endpoints return correct HTTP status and response shape
+- [ ] **TAC-A2** Side effects verified (e.g. task in SQLite after POST)
 
 ### E2E Tests
 > Run: `npm run test:e2e`. One file per scenario in § 7. User Scenarios.
 
-| ID | Description | test_level | component | maps_to_ac | scenario |
-|----|-------------|------------|-----------|------------|---------|
-| TAC-E1 | All User Scenarios pass end-to-end | e2e | Integration | AC-42–AC-49 | US1, US2, US3, US4 |
-| TAC-E2 | Page refresh hydrates state correctly | e2e | Integration | AC-37 | standalone |
-| TAC-E3 | Zero `[ERROR]` level console messages across all scenarios | e2e | Integration | AC-G2 | US1, US2, US3, US4 |
+- [ ] **TAC-E1** All User Scenarios pass end-to-end
+- [ ] **TAC-E2** Page refresh hydrates state correctly
+- [ ] **TAC-E3** Zero `[ERROR]` level console messages across all scenarios
