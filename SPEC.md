@@ -14,7 +14,7 @@
 ## 2. Overview
 A full-stack agentic TODO application. Users interact via a single always-visible chat input bar to create, update, delete, and query todo items. Agent responses surface as toast notifications. The agent groups tasks into named plans (tabs). Users can also manually add todo items without using the agent. Conversation is stateless.
 
-**Stack:** React 18 + TypeScript · Node.js + Express · LangGraph.js · p-queue · SQLite · SSE
+**Stack:** React 18 + TypeScript · Node.js + Express · LangGraph.js · OpenAI SDK · p-queue · SQLite · SSE
 
 ---
 
@@ -24,7 +24,7 @@ A full-stack agentic TODO application. Users interact via a single always-visibl
 | [A] | App Header (title + dark mode toggle) |
 | [B] | Chat Input Bar (always visible, below header) |
 | [C] | Toast Notification (agent reply, auto-dismisses) |
-| [E] | Plan Tabs (one tab per plan group) |
+| [E] | Plan Tabs (one tab per plan group, with delete group button) |
 | [F] | Todo List (vertical, filtered by active tab) |
 | [G] | Todo Item (checkbox + title + date + labels + delete) |
 | [H] | Item Labels (min 1, max 3 AI-generated tags) |
@@ -49,6 +49,7 @@ A full-stack agentic TODO application. Users interact via a single always-visibl
 | `Toast` dismiss | `toast-dismiss` |
 | `PlanTabs` | `plan-tabs` |
 | `PlanTab` (each) | `plan-tab-{planId}` |
+| `PlanDeleteButton` (each tab) | `plan-delete-{planId}` |
 | `ManualInput` | `manual-input` |
 | `TodoList` | `todo-list` |
 | `TodoItem` (each) | `todo-item-{taskId}` |
@@ -76,8 +77,9 @@ A full-stack agentic TODO application. Users interact via a single always-visibl
 | 3 | Plan Tabs | `PlanTabs`, `PlanTab` | `src/components/PlanTabs/...` | AC-15–AC-19 | TAC-U1, TAC-U3, TAC-U4 | `plan-tabs`, `plan-tab-{planId}` | none |
 | 4 | Todo Item | `TodoItem`, `ItemCheckbox`, `ItemContent`, `ItemTitle`, `ItemDateSubline`, `ItemLabels`, `ItemDeleteButton` | `src/components/TodoItem/...` | AC-23–AC-31 | TAC-U1, TAC-U2, TAC-U3, TAC-U4 | `todo-item-{taskId}`, `item-checkbox-{taskId}`, `item-delete-{taskId}` | none |
 | 5 | List + Footer | `TodoList`, `ManualInput`, `FooterBar`, `EmptyState` | `src/components/TodoList/...`, `src/components/FooterBar/...`, `src/components/EmptyState/...` | AC-20–AC-22, AC-32–AC-36 | TAC-U1, TAC-U2, TAC-U3 | `todo-list`, `manual-input`, `footer-bar`, `filter-tab-{all\|active\|completed}`, `clear-completed`, `empty-state` | Order 4 |
-| 6 | Backend | API, agent, queue, SSE, SQLite, dispatch | `server/...`, `src/types/events.ts`, `src/dispatch/dispatchLayer.ts`, `scripts/init-db.sql` | AC-37–AC-49 | TAC-A1, TAC-A2 | — | none |
-| 7 | Integration | Full stack wiring | all | AC-G1, AC-G2, AC-G3, all remaining AC | TAC-E1, TAC-E2, TAC-E3 | — | Orders 1–6 |
+| 6 | Backend | API, agent, queue, SSE, SQLite, dispatch, LLM integration | `server/...`, `src/types/events.ts`, `src/dispatch/dispatchLayer.ts`, `scripts/init-db.sql` | AC-37–AC-41, AC-50–AC-53 | TAC-A1, TAC-A2 | — | none |
+| 8 | Plan Delete | Plan delete button, confirmation dialog | `src/components/PlanTab/...` | AC-54–AC-59 | TAC-U1, TAC-U3 | `plan-delete-{planId}` | Order 3 |
+| 7 | Integration | Full stack wiring | all | AC-G1, AC-G2, AC-G3, all remaining AC | TAC-E1, TAC-E2, TAC-E3 | — | Orders 1–6, 8 |
 
 ---
 
@@ -94,6 +96,7 @@ App
 ├── Toast [C]
 ├── PlanTabs [E]
 │   └── PlanTab (one per plan)
+│       └── PlanDeleteButton
 ├── ManualInput
 ├── TodoList [F]
 │   ├── EmptyState [K]
@@ -141,13 +144,15 @@ App
 ---
 
 ### PlanTabs `[E]`
-**Layout:** Horizontal row below ChatInputBar. "All" tab always first.
-**Tokens:** `color-tab-active-text`, `color-tab-active-border`, `font-size-tab`, `color-text-tab`
+**Layout:** Horizontal row below ChatInputBar. "All" tab always first. Each plan tab has a delete button (×) on the right side of the tab.
+**Tokens:** `color-tab-active-text`, `color-tab-active-border`, `font-size-tab`, `color-text-tab`, `color-delete-button-hover`
 **States:** No plans (All only) · Plans exist
 **Behaviour:**
 - New tab on `PLAN_CREATED` — auto-focuses
 - Tab click filters TodoList
 - Tab switch does not interrupt agent jobs
+- Delete button (×) visible on plan tab hover only (not on "All" tab)
+- Clicking delete button → confirmation dialog → DELETE `/api/plans/:id` → all tasks in plan removed → tab removed → auto-focus "All" tab
 
 ---
 
@@ -236,6 +241,18 @@ App
 4. Frontend sends `context.highlightedTaskId`
 5. `TASK_DELETED` → item removed, toast confirms
 
+### US5 — Delete entire task group
+**TAC mapping:** TAC-E1
+1. User has multiple plans with tasks
+2. User hovers over a plan tab
+3. Delete button (×) appears on the tab
+4. User clicks delete button
+5. Confirmation dialog appears: `"Delete plan and all its tasks?"`
+6. User confirms
+7. `PLAN_DELETED` event emitted → tab removed, all tasks in plan removed
+8. "All" tab auto-focuses
+9. Toast confirms: `"Plan deleted with X tasks"`
+
 ---
 
 ## 8. Acceptance Criteria
@@ -277,6 +294,11 @@ App
 | AC-17 | New tab auto-focuses | both | BLOCKING |
 | AC-18 | Active tab has `token(color-tab-active-border)` bottom border | visual | BLOCKING |
 | AC-19 | Tab switch does not interrupt agent jobs | static | BLOCKING |
+| AC-54 | Each plan tab has delete button (×) visible on hover (not on "All" tab) | both | BLOCKING |
+| AC-55 | Delete button uses `data-testid="plan-delete-{planId}"` | static | BLOCKING |
+| AC-56 | Clicking delete shows confirmation dialog before deleting | both | BLOCKING |
+| AC-57 | Deleting plan removes all tasks in that plan and the plan itself | both | BLOCKING |
+| AC-58 | After plan deletion, "All" tab auto-focuses | both | BLOCKING |
 
 ### [F] TodoList
 | ID | Description | review_type | severity |
@@ -327,6 +349,7 @@ App
 | AC-39 | `/api/tasks` POST creates manual task | static | BLOCKING |
 | AC-40 | `/api/tasks/:id` DELETE removes task | static | BLOCKING |
 | AC-41 | `/api/tasks/:id` PATCH updates task | static | BLOCKING |
+| AC-59 | `/api/plans/:id` DELETE removes plan and all associated tasks | static | BLOCKING |
 
 ### Backend — Agent
 | ID | Description | review_type | severity |
@@ -336,6 +359,10 @@ App
 | AC-44 | Agent resolves `"it"` from `context.highlightedTaskId` | static | BLOCKING |
 | AC-45 | Agent never assigns tasks across plans | static | BLOCKING |
 | AC-46 | `CHAT_REPLY` is always the final event per job | static | BLOCKING |
+| AC-50 | Agent connects to LLM via LiteLLM gateway using OpenAI SDK | static | BLOCKING |
+| AC-51 | Agent uses `LLM_MODEL`, `LLM_ENDPOINT`, `LLM_API_KEY` environment variables | static | BLOCKING |
+| AC-52 | Agent performs LLM-based intent classification (replaces keyword matching) | static | BLOCKING |
+| AC-53 | Agent generates natural language responses via LLM for `CHAT_REPLY` events | static | BLOCKING |
 
 ### Backend — Queue + SSE
 | ID | Description | review_type | severity |

@@ -22,10 +22,11 @@
 | 3 | Event Envelope | All SSE event types and payloads |
 | 4 | Job Queue | p-queue configuration and job states |
 | 5 | Event Bus | InMemoryEventBus implementation |
-| 6 | Agent Design | LangGraph nodes, edges, tools |
-| 7 | Dispatch Layer | Frontend SSE routing |
-| 8 | Logging | Structured log format for frontend and backend |
-| 9 | Integration Tests | Test levels, API contracts, E2E strategy |
+| 6 | Agent Design | LangGraph nodes, edges, tools, LLM integration |
+| 7 | LLM Configuration | LiteLLM gateway connection via OpenAI SDK |
+| 8 | Dispatch Layer | Frontend SSE routing |
+| 9 | Logging | Structured log format for frontend and backend |
+| 10 | Integration Tests | Test levels, API contracts, E2E strategy |
 
 ---
 
@@ -42,6 +43,8 @@ p-queue (1 per sessionId, concurrency: 1)
  ▼
 LangGraph Agent
  ├── SQLite (plans, tasks, jobs, conversation_history)
+ ├── LiteLLM Gateway (via OpenAI SDK)
+ │     └── LLM_MODEL (gpt-4, claude, etc.)
  └── InMemoryEventBus
        │
        SSE stream → GET /api/events?sessionId=
@@ -60,6 +63,7 @@ LangGraph Agent
 | `/api/tasks` | POST | Manual task creation |
 | `/api/tasks/:id` | PATCH | Partial task update |
 | `/api/tasks/:id` | DELETE | Delete task |
+| `/api/plans/:id` | DELETE | Delete plan and all associated tasks |
 | `/api/state` | GET | Hydrate state on refresh (`?sessionId=`) |
 | `/api/health` | GET | Server health check |
 
@@ -94,6 +98,7 @@ LangGraph Agent
 ```typescript
 export type EventType =
   | 'PLAN_CREATED'
+  | 'PLAN_DELETED'
   | 'TASK_CREATED'
   | 'TASK_UPDATED'
   | 'TASK_DELETED'
@@ -114,6 +119,11 @@ export interface BaseEvent {
 export interface PlanCreatedEvent extends BaseEvent {
   eventType: 'PLAN_CREATED';
   payload: { plan: { id: string; name: string; type: string } };
+}
+
+export interface PlanDeletedEvent extends BaseEvent {
+  eventType: 'PLAN_DELETED';
+  payload: { planId: string; deletedTaskCount: number };
 }
 
 export interface TaskCreatedEvent extends BaseEvent {
@@ -172,7 +182,7 @@ export interface JobFailedEvent extends BaseEvent {
 }
 
 export type AgentEvent =
-  | PlanCreatedEvent | TaskCreatedEvent | TaskUpdatedEvent
+  | PlanCreatedEvent | PlanDeletedEvent | TaskCreatedEvent | TaskUpdatedEvent
   | TaskDeletedEvent | TaskHighlightedEvent | TaskHighlightClearedEvent
   | ChatReplyEvent | JobProgressEvent | JobCompleteEvent | JobFailedEvent;
 ```
@@ -239,6 +249,7 @@ any node → handle_error (on exception)
 // SWAP: replace with MCP client call for production
 create_plan(args: { name: string; type: string; sessionId: string }): Promise<Plan>
 get_plans(args: { sessionId: string }): Promise<Plan[]>
+delete_plan(args: { planId: string }): Promise<{ success: true; deletedTaskCount: number }>
 
 // server/agent/tools/taskTools.ts
 // SWAP: replace with MCP client call for production
@@ -246,6 +257,7 @@ create_task(args: { planId: string; title: string; date: string; labels: string[
 update_task(args: { taskId: string; fields: Partial<Task> }): Promise<Task>
 delete_task(args: { taskId: string }): Promise<{ success: true }>
 query_tasks(args: { sessionId: string; planId?: string; status?: string; sortBy?: 'date_asc' | 'date_desc'; limit?: number }): Promise<Task[]>
+delete_tasks_by_plan(args: { planId: string }): Promise<{ deletedCount: number }>
 ```
 
 ### Conversation Memory
@@ -257,7 +269,72 @@ query_tasks(args: { sessionId: string; planId?: string; status?: string; sortBy?
 
 ---
 
-## 7. Dispatch Layer
+## 7. LLM Configuration
+
+### Environment Variables
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `LLM_MODEL` | Yes | Model identifier for LiteLLM proxy | `gpt-4`, `claude-3-opus`, `ollama/llama2` |
+| `LLM_ENDPOINT` | Yes | LiteLLM gateway base URL | `http://localhost:4000` |
+| `LLM_API_KEY` | Yes | API key for LiteLLM authentication | `sk-abc123` |
+
+### OpenAI SDK Integration
+The agent uses OpenAI SDK to connect to LiteLLM gateway (universal LLM proxy):
+
+```typescript
+// server/agent/llm.ts
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  baseURL: process.env.LLM_ENDPOINT,
+  apiKey: process.env.LLM_API_KEY,
+  defaultHeaders: {
+    'Authorization': `Bearer ${process.env.LLM_API_KEY}`
+  }
+});
+
+export async function llmChat(messages: Array<{role: string, content: string}>): Promise<string> {
+  const response = await openai.chat.completions.create({
+    model: process.env.LLM_MODEL || 'gpt-4',
+    messages: messages as OpenAI.Chat.ChatCompletionMessageParam[],
+    temperature: 0.7,
+  });
+  return response.choices[0]?.message?.content || '';
+}
+```
+
+### LLM-Based Intent Classification
+```typescript
+// server/agent/nodes.ts - understand_intent node
+// Uses LLM to classify user intent instead of keyword matching
+const intentPrompt = `Classify the user intent from: CREATE_PLAN, CREATE_TASK, UPDATE_TASK, DELETE_TASK, QUERY_TASKS, CHAT.
+User message: "${state.message}"
+Respond with only the intent identifier.`;
+
+const intent = await llmChat([
+  { role: 'system', content: 'You are an intent classifier for a todo app.' },
+  { role: 'user', content: intentPrompt }
+]);
+state.intent = intent.trim();
+```
+
+### LLM-Based Reply Generation
+```typescript
+// server/agent/nodes.ts - compose_reply node
+// Uses LLM to generate natural language responses
+const replyPrompt = `Generate a friendly confirmation message for: ${state.intent}
+Context: ${JSON.stringify(state.context)}
+Keep it under 100 characters.`;
+
+state.reply = await llmChat([
+  { role: 'system', content: 'You are a helpful todo app assistant.' },
+  { role: 'user', content: replyPrompt }
+]);
+```
+
+---
+
+## 8. Dispatch Layer
 ```typescript
 // src/dispatch/dispatchLayer.ts
 // Singleton. Components register via on(eventType, handler).
@@ -267,7 +344,7 @@ query_tasks(args: { sessionId: string; planId?: string; status?: string; sortBy?
 
 ---
 
-## 8. Logging
+## 9. Logging
 > Both frontend and backend must implement structured logging.
 > These logs are the primary debugging tool for tracing data flow issues.
 > Logger function names are the authoritative names agents must use — do not rename.
@@ -326,7 +403,7 @@ export const flog = (module: string, action: string, meta?: object) =>
 
 ---
 
-## 9. Integration Tests
+## 10. Integration Tests
 
 ### Test Levels
 | Level | Tool | Scope | When |
