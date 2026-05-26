@@ -50,9 +50,10 @@ flowchart TD
 
 | Layer | Files | Purpose |
 |-------|-------|---------|
-| **Spec** | `SPEC.md`, `FOUNDATION.md`, `DESIGN_TOKENS.md`, `assets/*.png` | Requirements & design tokens |
-| **Agent** | `shipit/SKILL.md`, `builder-agent.md`, `reviewer-agent.md` | Execution logic |
-| **State** | `REVIEW.md` | Unified Builder↔Reviewer communication |
+| **Spec** | `SPEC.md`, `references/FOUNDATION.md`, `references/DESIGN_TOKENS.md`, `assets/*.png` | Requirements and **Visual contract** (tokens) |
+| **Orchestrator** | `.cursor/skills/shipit/SKILL.md` | Multi-component waves, `review.md` board, SQLite gates |
+| **Agents** | `.cursor/agents/builder-agent.md`, `reviewer-agent.md`, `e2e-agent.md` | Scoped build / review / E2E |
+| **State** | `./review.md` (from template), `./review_history.db`, optional `./agentic-todo.db` | Builder/Reviewer anchors + orchestration DB + app DB |
 
 ## Usage
 
@@ -124,3 +125,16 @@ This demo uses a **complex kanban board** (MEMO panel + 3 columns + toggle + too
 - Multi-component orchestration
 - Browser-based visual validation
 - Iterative improvement loops
+
+## Branches and profiles
+
+| Branch | Profile | Visual contract |
+|--------|---------|-----------------|
+| `agentic-patterns` | General multi-agent shipit; **no Braid** in agents, skills, or SPEC | `references/DESIGN_TOKENS.md` + CSS variables (`src/styles/tokens.css`) |
+| `agentic-patterns-braid` | Same orchestration patterns; **Braid** testbed for UI | `references/BRAID.md` + `seekJobs` theme |
+
+Orchestration (Builder / Reviewer / E2E / shipit board + SQLite gates) is shared conceptually; only SPEC §1, §6, §8, and foundation styling differ by branch.
+
+**Preflight (after changes):** from repo root run `sh scripts/verify-shipit-preflight.sh` — checks agent names match shipit slugs, templates exist, SPEC has orchestration sections, and SQL init scripts apply.
+
+**First live `/shipit` on a new machine:** set `max_concurrent_components: 1` in `.cursor/skills/shipit/SKILL.md` for one serial green run, then raise to `3` for parallel waves if desired.

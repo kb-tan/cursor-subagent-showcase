@@ -24,7 +24,8 @@
 |----------|------|---------|
 | Foundation | `./references/FOUNDATION.md` | Stack, scaffold, dev server, scripts, test toolchain |
 | Architecture | `./references/ARCHITECTURE.md` | API contracts, events, queue, agent, logging, integration tests |
-| Design Tokens | `./references/DESIGN_TOKENS.md` | All visual values as CSS variables |
+| Visual contract | `./references/DESIGN_TOKENS.md` | CSS variables in `src/styles/tokens.css`; token tables and review rules for Reviewer |
+| Design Tokens | `./references/DESIGN_TOKENS.md` | Same document — listed twice so agents can resolve “Visual contract” and “Design Tokens” from §1 |
 | Wireframe | `./assets/wireframe-reference.png` | Visual source of truth for all UI zones |
 
 ---
@@ -294,8 +295,8 @@ App
 ## 8. Acceptance Criteria
 
 > Reviewer reads this section. Every item is binary: PASS or FAIL.
-> Visual items: reference wireframe in § 1. References.
-> Token items: reference DESIGN_TOKENS.md in § 1. References.
+> Visual items: reference wireframe in § 1. References and token compliance in **Visual contract** (`./references/DESIGN_TOKENS.md`).
+> Token items: reference `DESIGN_TOKENS.md` in § 1. References; all runtime values via CSS variables in `src/styles/tokens.css`.
 > Backend items: reference ARCHITECTURE.md § 2 and § 6.
 
 ### [A] AppHeader
@@ -392,12 +393,43 @@ App
 | Start backend | Run `dev:backend` script from FOUNDATION.md § NPM Scripts |
 | Verify backend alive | GET health check path from FOUNDATION.md § Dev Server |
 | Install dependencies | Run `install` script if `node_modules` missing |
-| Initialise database | Run `init-db` script from FOUNDATION.md § NPM Scripts |
+| Initialise databases | Run `init-db` script from FOUNDATION.md § NPM Scripts (orchestration + application per subsections below) |
 | Required files | See FOUNDATION.md § Project Scaffold |
 | File structure | See FOUNDATION.md § Project File Structure |
-| Styling rule | All values via CSS variables — never hardcode. Tokens in `references/DESIGN_TOKENS.md` |
+| Visual contract | `references/DESIGN_TOKENS.md` — CSS variables; no UI component library required by agents |
+| Styling rule | All values via CSS variables — never hardcode literals that exist as tokens. Tokens in `references/DESIGN_TOKENS.md` |
 | Event types | Single definition at path declared in ARCHITECTURE.md § Event Envelope — never redefine |
 | Logging | Use function names and format declared in ARCHITECTURE.md § Logging |
+
+### Application database (runtime)
+
+| What | Value |
+|------|--------|
+| File | `agentic-todo.db` |
+| Schema | `scripts/init-app-db.sql` |
+| Init | Second command in `npm run init-db` (see FOUNDATION.md) |
+| Access | `better-sqlite3` via `server/db.ts` (when backend exists) |
+| Used by | Backend manifest row; API contract tests (TAC-A2) |
+| Agents | **Builder Agent** implements; **Reviewer Agent** verifies side effects |
+
+### Orchestration database (review history)
+
+| What | Value |
+|------|--------|
+| File | `review_history.db` |
+| Schema | `.cursor/skills/shipit/references/init-db.sql` |
+| Init | First command in `npm run init-db` |
+| Access | MCP `sqlite` server (see `.cursor/mcp.json`) or shell `sqlite3 review_history.db` |
+| Tables | `reviews`, `ac_results`, `e2e_results`, `metrics`, `build_manifest_state` |
+| Used by | Orchestrator, Builder (`passing_acs`), Reviewer, E2E Agent |
+| Agents | **Never** store application todos here — only build/review/E2E workflow state |
+
+### Shared state files (orchestration)
+
+| File | Template | Writers |
+|------|----------|---------|
+| `./review.md` | `.cursor/skills/shipit/references/review.md` | **Manifest board + iteration log:** Orchestrator only. **Anchored blocks** (`<!-- shipit:component=… -->`): Builder (Builder Output) and Reviewer (Reviewer Feedback) per component. Gates: SQLite first, then anchors. |
+| `./e2e_result.md` | `.cursor/skills/shipit/references/e2e_result.md` | E2E Agent |
 
 ---
 

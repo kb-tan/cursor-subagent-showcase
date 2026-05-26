@@ -1,89 +1,48 @@
 
 # review.md
 
-> Template file. Location: `.cursor/skills/shipit/references/review.md`
-> Orchestrator copies this to `./review.md` at the start of each iteration.
-> Builder writes to "Builder Output" section only.
-> Reviewer writes to "Reviewer Feedback" section only.
-> Orchestrator reads verdict and fix items to drive next iteration.
-> Full history is in `review_history.db`.
+> Multi-component review board. Template: `.cursor/skills/shipit/references/review.md`
+>
+> | Section | Who writes |
+> |---------|------------|
+> | **Manifest board** | **Orchestrator only** |
+> | **Builder Output** blocks | **Builder Agent** — inside `<!-- shipit:component=… -->` markers only |
+> | **Reviewer Feedback** blocks | **Reviewer Agent** — inside matching markers only |
+> | **Iteration log** | **Orchestrator only** |
+>
+> **Gates (per component):** Orchestrator reads **SQLite first** (`review_history.db`), then confirms anchored blocks in this file.
+> Full history: `review_history.db`.
 
 ---
 
-## Status
+## Manifest board
 
-```
-IN_PROGRESS | AWAITING_REVIEW | APPROVED | CHANGES_REQUIRED
-```
+> **Orchestrator only.** Agents MUST NOT edit this table.
 
-**Current:** `IN_PROGRESS`
-**Iteration:** —
-**Component:** —
+| Order | Component | Builder | Reviewer | Iter | Run ID |
+|------:|-----------|---------|----------|-----:|--------|
+| — | — | — | — | — | — |
+
+**Builder / Reviewer column values:** `PENDING` · `IN_PROGRESS` · `AWAITING_REVIEW` · `APPROVED` · `CHANGES_REQUIRED` · `ESCALATED`
 
 ---
 
 ## Builder Output
 
-> Builder writes here after completing the build.
-
-### Files Created / Modified
-
-<!-- list each file path -->
-
-### data-testid Attributes Added
-
-<!-- list each testid added -->
-
-### Unit Tests Written
-
-<!-- list TAC items covered -->
-
-### Fix Items Actioned
-
-<!-- FIX_ONLY mode: list each Fix ID actioned, or "N/A" -->
-
-### Deviations from Spec
-
-<!-- any intentional deviation with justification, or "None" -->
-
-### Status
-
-`AWAITING_REVIEW`
+> One anchored block per active manifest row. Orchestrator seeds stubs from `references/review-component-stub.md`.
 
 ---
 
 ## Reviewer Feedback
 
-> Reviewer writes here after completing the review.
-> Orchestrator reads verdict and fix items table to drive next iteration.
-
-### Regression Check
-
-<!-- REGRESSION items listed here — highest priority. "None" if clean. -->
-
-### Fix Items
-
-| Fix ID | AC | Severity | File | Issue | Fix Instruction |
-|--------|----|----------|------|-------|-----------------|
-| | | | | | |
-
-### Quantified Results
-
-- AC: —/— pass
-- Visual: —%
-- Console errors: —
-- Unit tests: —/— pass
-
-### Verdict
-
-`APPROVED` | `CHANGES_REQUIRED`
+> One anchored block per active manifest row. Orchestrator seeds reviewer stubs before launching reviewers.
 
 ---
 
-## Iteration Log
+## Iteration log
 
-> Orchestrator updates this after each iteration.
+> **Orchestrator only** — append one row per component iteration (build or review).
 
-| Iteration | Mode | Verdict | AC Pass | Visual | Regressions |
-|-----------|------|---------|---------|--------|-------------|
-| | | | | | |
+| Order | Component | Iteration | Mode | Agent | Verdict | AC Pass | Visual | Regressions |
+|------:|-----------|----------:|------|-------|---------|---------|--------|-------------|
+| — | — | — | — | — | — | — | — | — |

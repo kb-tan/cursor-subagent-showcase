@@ -1,7 +1,8 @@
 
 -- review_history.db schema
 -- Orchestrator runs this on first execution via: npm run init-db
--- All agents discover table names and columns from SPEC.md § 10
+-- Orchestration DB only. Application DB: scripts/init-app-db.sql
+-- Agents discover orchestration table names from SPEC.md § 10 → Orchestration database
 
 -- One record per agent per iteration
 -- Written by: Builder, Reviewer, E2E Agent

@@ -51,7 +51,8 @@ Required files — create if missing, never overwrite if correct:
 | `src/utils/logger.ts` | Frontend structured logger |
 | `server/index.ts` | Express entry point |
 | `server/logger.ts` | Backend structured logger |
-| `scripts/init-db.sql` | SQLite schema |
+| `scripts/init-app-db.sql` | Application SQLite schema (plans, tasks, jobs) |
+| `.cursor/skills/shipit/references/init-db.sql` | Orchestration schema (`review_history.db`) — shipit / agents |
 | `playwright.config.ts` | E2E test config |
 | `vitest.config.ts` | Unit test config |
 
@@ -95,7 +96,7 @@ scripts/
 | `dev:frontend` | `vite` |
 | `dev:backend` | `tsx watch server/index.ts` |
 | `build` | `tsc && vite build` |
-| `init-db` | `sqlite3 review_history.db < scripts/init-db.sql` |
+| `init-db` | `sqlite3 review_history.db < .cursor/skills/shipit/references/init-db.sql && sqlite3 agentic-todo.db < scripts/init-app-db.sql` |
 | `test` | `vitest run` |
 | `test:watch` | `vitest` |
 | `test:api` | `vitest run --project api` |
