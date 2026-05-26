@@ -130,11 +130,9 @@ This demo uses a **complex kanban board** (MEMO panel + 3 columns + toggle + too
 
 | Branch | Profile | Visual contract |
 |--------|---------|-----------------|
-| `agentic-patterns` | General multi-agent shipit; **no Braid** in agents, skills, or SPEC | `references/DESIGN_TOKENS.md` + CSS variables (`src/styles/tokens.css`) |
-| `agentic-patterns-braid` | Same orchestration patterns; **Braid** testbed for UI | `references/BRAID.md` + `seekJobs` theme |
+| `agentic-patterns` | Default multi-agent shipit; token/CSS contract in agents, skills, and SPEC | `references/DESIGN_TOKENS.md` + CSS variables (`src/styles/tokens.css`) |
+| `agentic-patterns-braid` | Same orchestration flow; alternate UI profile on that branch (see its SPEC §1 and references) | Defined on that branch only |
 
 Orchestration (Builder / Reviewer / E2E / shipit board + SQLite gates) is shared conceptually; only SPEC §1, §6, §8, and foundation styling differ by branch.
-
-**Preflight (after changes):** from repo root run `sh scripts/verify-shipit-preflight.sh` — checks agent names match shipit slugs, templates exist, SPEC has orchestration sections, and SQL init scripts apply.
 
 **First live `/shipit` on a new machine:** set `max_concurrent_components: 1` in `.cursor/skills/shipit/SKILL.md` for one serial green run, then raise to `3` for parallel waves if desired.
