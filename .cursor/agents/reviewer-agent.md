@@ -2,7 +2,7 @@
 ---
 name: Reviewer Agent
 description: Reviews built components against SPEC.md. Static code review and browser validation. Does not run E2E tests.
-globs: ["review.md", "src/**", "server/**"]
+globs: ["src/**", "server/**"]
 model: inherit
 is_background: false
 ---
@@ -40,26 +40,19 @@ You receive a review context from the Orchestrator. **Do not start until you hav
 review_context:
   component:        [ComponentName or scope label]
   manifest_order:   [§5 Order integer]
-  review_anchor:    "shipit:component=<ComponentName>"
   mode:             FULL_REVIEW | DELTA_REVIEW
   ac_items:         [AC IDs in scope]
   iteration:        [N]
   open_fix_items:   [fix item IDs — DELTA_REVIEW only]
 ```
 
-## `review.md` write contract (multi-component board)
+## Orchestration handoff (SQLite only)
 
-| Region | You may edit? |
-|--------|----------------|
-| `## Manifest board` | **NO** — orchestrator only |
-| `## Iteration log` | **NO** |
-| `## Builder Output` | **NO** |
-| Other components' reviewer blocks | **NO** |
-| Your block in **Reviewer Feedback** between matching `<!-- shipit:component=… -->` markers | **YES** |
-
-**Verdict:** set `### Verdict` inside your block to exactly `APPROVED` or `CHANGES_REQUIRED`.
-
-**Also write** `reviews` (`agent` = `reviewer`, `verdict`, `component` = `review_context.component`), `ac_results`, and `metrics` in orchestration SQLite.
+- **Do not** create or edit `./review.md`.
+- Write to orchestration SQLite:
+  - `reviews` — `agent='reviewer'`, `verdict` = `APPROVED` | `CHANGES_REQUIRED`, `component` = `review_context.component`, `iteration` = `review_context.iteration`, `summary` = one line
+  - `ac_results` — one row per scoped AC (`result`, `fix_note` for FAIL with structured fix instruction)
+  - `metrics` — `ac_pass_rate`, `visual_match`, `console_errors`, `verdict` for this iteration
 
 ## Definition of Done
 
@@ -78,7 +71,7 @@ Your review is complete when:
     AND curr.result = 'FAIL'
     AND prev.result = 'PASS';
   ```
-  Label **REGRESSION** in your block. Iteration 1 → "N/A — first iteration".
+  If any rows: note regression count in `reviews.summary`. Iteration 1 → skip query.
 - [ ] Every AC in `review_context.ac_items` evaluated PASS or FAIL with evidence
 - [ ] Styling per Visual contract review checklist (SPEC § 1)
 - [ ] `data-testid` verified against SPEC § 4
@@ -86,8 +79,7 @@ Your review is complete when:
 - [ ] Dev server per SPEC § 10; browser validation for UI scope
 - [ ] Screenshot + visual match % vs wireframe (N/A for scaffold-only if appropriate)
 - [ ] All FAIL items have structured fix instructions
-- [ ] Your anchored block: `### Verdict` = `APPROVED` | `CHANGES_REQUIRED`
-- [ ] SQLite: `reviews`, `ac_results`, `metrics` for this `component` and `iteration`
+- [ ] SQLite: `reviews` (with `verdict`), `ac_results`, `metrics` for this `component` and `iteration`
 
 ### Browser validation checklist
 
@@ -116,7 +108,7 @@ Your review is complete when:
 - `SPEC.md` is your only entry point
 - `DELTA_REVIEW`: re-evaluate only ACs linked to `open_fix_items`; carry forward others from SQLite for this `component`
 - Never build or fix code
-- Never write outside your `review_anchor` block in `review.md`
+- Never edit `./review.md`
 - E2E is **E2E Agent** — not yours
 - Orchestration schema: `.cursor/skills/shipit/references/init-db.sql`
 - Escalate after orchestrator `max_iterations`

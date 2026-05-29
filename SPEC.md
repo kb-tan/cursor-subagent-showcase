@@ -422,13 +422,14 @@ App
 | Access | MCP `sqlite` server (see `.cursor/mcp.json`) or shell `sqlite3 review_history.db` |
 | Tables | `reviews`, `ac_results`, `e2e_results`, `metrics`, `build_manifest_state` |
 | Used by | Orchestrator, Builder (`passing_acs`), Reviewer, E2E Agent |
+| Gates | **SQLite only** (`reviews`, `build_manifest_state`, `ac_results`, `metrics`) — not markdown |
 | Agents | **Never** store application todos here — only build/review/E2E workflow state |
 
 ### Shared state files (orchestration)
 
 | File | Template | Writers |
 |------|----------|---------|
-| `./review.md` | `.cursor/skills/shipit/references/review.md` | **Manifest board + iteration log:** Orchestrator only. **Anchored blocks** (`<!-- shipit:component=… -->`): Builder (Builder Output) and Reviewer (Reviewer Feedback) per component. Gates: SQLite first, then anchors. |
+| Human progress | — | **Not a repo file.** Run `npm run progress` — prints kanban from `review_history.db` to stdout. Not used for gates. |
 | `./e2e_result.md` | `.cursor/skills/shipit/references/e2e_result.md` | E2E Agent |
 
 ---

@@ -51,9 +51,9 @@ flowchart TD
 | Layer | Files | Purpose |
 |-------|-------|---------|
 | **Spec** | `SPEC.md`, `references/FOUNDATION.md`, `references/DESIGN_TOKENS.md`, `assets/*.png` | Requirements and **Visual contract** (tokens) |
-| **Orchestrator** | `.cursor/skills/shipit/SKILL.md` | Multi-component waves, `review.md` board, SQLite gates |
+| **Orchestrator** | `.cursor/skills/shipit/SKILL.md` | Multi-component waves, SQLite-only gates |
 | **Agents** | `.cursor/agents/builder-agent.md`, `reviewer-agent.md`, `e2e-agent.md` | Scoped build / review / E2E |
-| **State** | `./review.md` (from template), `./review_history.db`, optional `./agentic-todo.db` | Builder/Reviewer anchors + orchestration DB + app DB |
+| **State** | `./review_history.db`, optional `./agentic-todo.db` | Orchestration DB + app DB; human status via `npm run progress` |
 
 ## Usage
 

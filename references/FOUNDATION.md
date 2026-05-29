@@ -102,6 +102,9 @@ scripts/
 | `test:api` | `vitest run --project api` |
 | `test:e2e` | `playwright test` |
 | `test:all` | `npm test && npm run test:api && npm run test:e2e` |
+| `progress` | `node scripts/progress.mjs` |
+
+> Human build status: `npm run progress` prints a kanban summary from `review_history.db` (stdout). Orchestration gates use SQLite only.
 
 ---
 

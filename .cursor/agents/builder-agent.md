@@ -40,7 +40,6 @@ You receive a scoped task brief from the Orchestrator. **Do not start until you 
 task_brief:
   component:        [ComponentName or scope label — e.g. Toast, Scaffold]
   manifest_order:   [§5 Order integer]
-  review_anchor:    "shipit:component=<ComponentName>"   # must match orchestrator prompt
   mode:             FULL_BUILD | FIX_ONLY
   ac_items:         [AC IDs to implement]
   tac_items:        [TAC IDs scoped to this component]
@@ -51,23 +50,15 @@ task_brief:
   iteration:        [N]
 ```
 
-## `review.md` write contract (multi-component board)
+## Orchestration handoff (SQLite only)
 
-`./review.md` holds **all** manifest rows. You touch **only** your anchored block.
-
-| Region | You may edit? |
-|--------|----------------|
-| `## Manifest board` | **NO** — orchestrator only |
-| `## Iteration log` | **NO** — orchestrator only |
-| `## Reviewer Feedback` | **NO** |
-| Other components' `<!-- shipit:component=… -->` blocks | **NO** |
-| Your block in **Builder Output** between `<!-- shipit:component=<Yours> -->` … `<!-- /shipit:component=<Yours> -->` | **YES** |
-
-**Find your block** using `task_brief.review_anchor` (e.g. `<!-- shipit:component=Toast order=2 -->`).
-
-**Handoff:** set `**Builder status:**` inside your block to exactly `AWAITING_REVIEW` (replace final `IN_PROGRESS` line before handoff).
-
-**Forbidden:** global `## Status` / **Current** fields (removed — per-component status lives in your anchor + SQLite).
+- **Do not** create or edit `./review.md`. Humans run `npm run progress` for status (orchestrator does not require it for gates).
+- On completion, insert one row into `reviews`:
+  - `component` = `task_brief.component`
+  - `agent` = `'builder'`
+  - `iteration` = `task_brief.iteration`
+  - `summary` = one-line handoff (scope, key files touched, `npm test` result if run)
+  - `verdict` = NULL
 
 ## Definition of Done
 
@@ -83,10 +74,9 @@ Your build is complete when:
 - [ ] Servers start without errors — read commands from SPEC.md § 10
 - [ ] No passing AC from `task_brief.passing_acs` broken:
   - Query `ac_results` in orchestration DB before touching shared files
-- [ ] Your anchored **Builder Output** block updated; `**Builder status:**` = `AWAITING_REVIEW`
-- [ ] Build record written to orchestration SQLite `reviews` table (`component` = `task_brief.component`, `agent` = `builder`)
+- [ ] Build record written to orchestration SQLite `reviews` table (`component` = `task_brief.component`, `agent` = `builder`, `iteration` = `task_brief.iteration`)
 
-### Pre-handoff self-check (before AWAITING_REVIEW)
+### Pre-handoff self-check
 
 - [ ] Wireframe check for **this scope only**
 - [ ] No forbidden raw style literals in `files_in_scope`
@@ -96,8 +86,8 @@ Your build is complete when:
 ## Rules
 
 - `SPEC.md` is your only entry point
-- `FIX_ONLY`: address **only** `task_brief.fix_items` — do not touch other components' files or review blocks
+- `FIX_ONLY`: address **only** `task_brief.fix_items` — do not touch other components' files
 - Never modify files outside `task_brief.files_in_scope`
-- Never write outside your `review_anchor` block in `review.md`
+- Never edit `./review.md`
 - Orchestration schema: `.cursor/skills/shipit/references/init-db.sql`
 - Escalate to human if still CHANGES_REQUIRED after orchestrator `max_iterations`

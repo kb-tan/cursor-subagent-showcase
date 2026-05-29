@@ -17,7 +17,7 @@ config:
   pilot_mode:              false   # true = run only first manifest row then halt for human
 ```
 
-> **Wave** = one ready-set cycle (board update → stubs → builders → reviewers). `max_concurrent_components` caps how many §5 rows are in that cycle.
+> **Wave** = one ready-set cycle (ready set → builders → reviewers → SQLite gates). `max_concurrent_components` caps how many §5 rows are in that cycle.
 
 ---
 
@@ -29,70 +29,45 @@ You are a **coordinator only**. You do not implement features.
 
 - Read `SPEC.md` and §1 reference paths (for validation and task_brief construction only)
 - Run SQLite init/queries per §10 (orchestration DB only)
-- Copy templates:
-  - `.cursor/skills/shipit/references/review.md` → `./review.md` (Phase 0 only, or when resetting entire board)
-  - `.cursor/skills/shipit/references/e2e_result.md` → `./e2e_result.md`
-- **Edit `./review.md` only:**
-  - `## Manifest board` table (orchestrator-only)
-  - `## Iteration log` table (orchestrator-only)
-  - Seed / replace anchored blocks from `references/review-component-stub.md` (between `<!-- shipit:component=… -->` markers)
+- Copy `.cursor/skills/shipit/references/e2e_result.md` → `./e2e_result.md` (integration pass start)
 - Launch subagents via **Task** (see Subagent invocation)
-- Read `./review.md`, `./e2e_result.md`, SQLite query results
+- Read `./e2e_result.md` and SQLite query results for gates and routing (**do not** read markdown for G1/G2)
 - Update `build_manifest_state` in SQLite
 - Write Phase 3 ship/escalation report
 
 ### Orchestrator MUST NOT
 
-- Create, edit, or delete files under `src/`, `server/`, `e2e/`, or root `package.json` / `vite.config.*` / `tsconfig.*` (except copying templates above)
-- Edit **inside** `<!-- shipit:component=… -->` blocks in Builder Output or Reviewer Feedback (agents own those)
+- Create, edit, or delete files under `src/`, `server/`, `e2e/`, or root `package.json` / `vite.config.*` / `tsconfig.*` (except copying `e2e_result.md` template above)
+- Use `./review.md` or any markdown file for G1, G2, G3, or G4 routing decisions
 - Run build, unit tests, browser review, or E2E as a substitute for subagents
 - Declare **SHIPPED** unless all gates below pass
 
 ### Gates (hard stops)
 
-**Per-component gates** (Phase 1 waves and serial rows). **SQLite is authoritative**; `review.md` blocks confirm handoff.
+**Per-component gates** (Phase 1 waves and serial rows). **SQLite is the only routing authority.** Agents do not write `review.md`; humans may run `npm run progress` for a terminal kanban (not a gate).
 
-| Gate | Condition (component = `C`) |
-|------|-----------------------------|
-| **G1** | Latest builder `reviews` row for `C` exists **and** anchored block `**Builder status:**` = `AWAITING_REVIEW` |
-| **G2** | Latest reviewer `reviews.verdict` for `C` = `APPROVED` **and** anchored block `### Verdict` = `APPROVED` |
+| Gate | Condition (component = `C`, iteration = `:iter`) |
+|------|--------------------------------------------------|
+| **G1** | Latest `reviews` row for `C` where `agent='builder'` and `iteration=:iter`, with non-null `summary` |
+| **G2** | Latest `reviews` row for `C` where `agent='reviewer'` and `iteration=:iter` has `verdict='APPROVED'` |
 | **G3** | Before Phase 2: every §5 manifest row `APPROVED` in `build_manifest_state` |
-| **G4** | Before Phase 3 SHIPPED: Integration reviewer `APPROVED` AND `./e2e_result.md` **Verdict** = `APPROVED` |
+| **G4** | Before Phase 3 SHIPPED: Integration reviewer `APPROVED` in SQLite AND `./e2e_result.md` **Verdict** = `APPROVED` |
 
 **SQLite queries (orchestrator runs after each Task):**
 
 ```sql
 -- G1: builder handed off
 SELECT id, summary FROM reviews
-WHERE component = :C AND agent = 'builder'
+WHERE component = :C AND agent = 'builder' AND iteration = :iter
 ORDER BY id DESC LIMIT 1;
 
 -- G2: reviewer verdict
 SELECT verdict FROM reviews
-WHERE component = :C AND agent = 'reviewer'
+WHERE component = :C AND agent = 'reviewer' AND iteration = :iter
 ORDER BY id DESC LIMIT 1;
 ```
 
-If SQLite and `review.md` anchor disagree → trust SQLite for gate decision; re-seed or fix the anchor block before next Task.
-
----
-
-## Shared `review.md` (multi-component board)
-
-Single `./review.md` for all manifest rows. See `references/review.md`.
-
-| Section | Writer |
-|---------|--------|
-| Manifest board | **Orchestrator only** |
-| `<!-- shipit:component=X order=N -->` in Builder Output | **Builder Agent** for `X` only |
-| Matching block in Reviewer Feedback | **Reviewer Agent** for `X` only |
-| Iteration log | **Orchestrator only** |
-
-**Anchors:** `<!-- shipit:component=Toast order=2 -->` … `<!-- /shipit:component=Toast -->`
-
-**Orchestrator board update (after each Task):** set that row’s `Builder` or `Reviewer` column from gate read above. Set `Run ID` to a short id (e.g. `toast-b-1`).
-
-**Seed blocks before a wave:** for each component in the wave, insert builder + reviewer stubs from `references/review-component-stub.md` (replace `{{COMPONENT}}`, `{{ORDER}}`, `{{ITERATION}}`). Do not duplicate an existing anchor — replace stub on FIX_ONLY retry for that component only.
+**Verify gates** — query SQLite only; do not assume success from Task return message alone.
 
 ---
 
@@ -108,20 +83,19 @@ Single `./review.md` for all manifest rows. See `references/review.md`.
 
 ```yaml
 repo_path: /path/to/repo
-review_anchor: "shipit:component=<ComponentName>"
+component: <Scope>      # SPEC §5 Scope verbatim (SQLite reviews.component key)
 manifest_order: <N>   # SPEC §5 Order column
-gate_target: G1 | G2  # builder → G1, reviewer → G2
+iteration: <N>
+gate_target: G1 | G2  # orchestrator checks SQL only; hint for agent
 ```
 
 ```
 Task(
   subagent_type: "<exact slug from table>",
   run_in_background: <see Parallel rules — default false when max_concurrent_components is 1>,
-  prompt: "<task_brief | review_context | test_context YAML + repo_path + review_anchor + gate_target>"
+  prompt: "<task_brief | review_context | test_context YAML + repo_path + component + manifest_order + iteration + gate_target>"
 )
 ```
-
-**Verify gates** — read SQLite + anchored block; do not assume success from Task return message alone.
 
 **Forbidden:** `generalPurpose` for build/review/e2e unless Task fails — then **HALT** and report to user.
 
@@ -156,7 +130,7 @@ Take up to config.max_concurrent_components from ready, prefer lower Order first
 
 **Pilot mode / serial:** `max_concurrent_components` = 1 — same gates, no parallel Tasks.
 
-**After wave builders complete:** update board → verify G1 per component → launch reviewer wave → verify G2 per component → update `build_manifest_state` and iteration log.
+**After wave builders complete:** verify G1 per component (SQL) → launch reviewer wave → verify G2 per component (SQL) → update `build_manifest_state`.
 
 **CHANGES_REQUIRED in a wave:** only failed components re-enter next cycle (FIX_ONLY builder + DELTA_REVIEW reviewer); other APPROVED components in the wave stay untouched.
 
@@ -164,12 +138,12 @@ Take up to config.max_concurrent_components from ready, prefer lower Order first
 
 ## Manifest → task brief mapping
 
-SPEC.md §5 has no Files column. Derive brief fields from **Scope** (use the **Scope** cell verbatim as SQLite `component` key and as `<!-- shipit:component=… -->` name — must match anchors).
+SPEC.md §5 has no Files column. Derive brief fields from **Scope** (use the **Scope** cell verbatim as SQLite `component` key).
 
 For each manifest row, set:
 
+- `component` = §5 **Scope** string (e.g. `Header + Input`, `Toast`, `Integration`)
 - `manifest_order` = §5 **Order** integer
-- `review_anchor` = `shipit:component=<Scope>` where `<Scope>` is the exact Scope string (e.g. `Header + Input`, `Toast`, `Integration`)
 
 ### Dependencies
 
@@ -220,8 +194,9 @@ Always paste full YAML into the Task `prompt`, including:
 
 ```yaml
 repo_path: <absolute path to repo root>
-review_anchor: "shipit:component=<Scope>"
+component: <Scope>
 manifest_order: <Order from §5>
+iteration: <N>
 gate_target: G1   # builder → G1; reviewer → G2
 ```
 
@@ -231,7 +206,6 @@ Builder example (FULL_BUILD):
 task_brief:
   component:        "<Scope>"
   manifest_order:   <N>
-  review_anchor:    "shipit:component=<Scope>"
   mode:             FULL_BUILD
   ac_items:         [<from §5 AC Items column>]
   tac_items:        [<per table above>]
@@ -248,7 +222,6 @@ Reviewer example:
 review_context:
   component:        "<Scope>"
   manifest_order:   <N>
-  review_anchor:    "shipit:component=<Scope>"
   mode:             FULL_REVIEW
   ac_items:         [<scoped AC IDs>]
   iteration:        <N>
@@ -271,24 +244,22 @@ Pass the list in the builder prompt as **do not modify files outside current `fi
 
 ### Phase 0
 
-- [ ] SPEC validated; DBs initialized; `review.md` copied from template if missing
+- [ ] SPEC validated; DBs initialized (`npm run init-db`)
 
 ### Per wave (or serial row)
 
 - [ ] Ready set computed; dependencies satisfied
-- [ ] Board rows added/updated (`Builder` = `IN_PROGRESS`); stubs seeded for each component in wave
 - [ ] `task_brief` per component (FULL_BUILD or FIX_ONLY)
 - [ ] Builder Task(s) launched (parallel if concurrent components > 1)
-- [ ] Board: each component **G1** → `AWAITING_REVIEW`
+- [ ] **G1** each component — SQL only
 - [ ] Reviewer Task(s) launched
-- [ ] Board: each component **G2** → `APPROVED` or `CHANGES_REQUIRED`
-- [ ] `build_manifest_state` updated per component
-- [ ] Iteration log appended per component
+- [ ] **G2** each component — SQL only
+- [ ] `build_manifest_state` updated per component on APPROVED
 - [ ] Self-check: no edits under `src/` / `server/`
 
 ### Integration pass
 
-- [ ] Single component `Integration` on board; builder → G1 → reviewer → G2 (serial)
+- [ ] Single component `Integration`; builder → G1 → reviewer → G2 (serial)
 - [ ] E2E Agent → **G4** on `e2e_result.md`
 
 ---
@@ -301,7 +272,7 @@ If `config.pilot_mode: true` OR user says `/shipit pilot`:
 - **Serial only** (`max_concurrent_components` treated as 1)
 - Full loop including FIX_ONLY / DELTA_REVIEW until G2 `APPROVED` or escalate
 - **STOP** — no orders 2–7, integration, or E2E
-- Report board + SQLite state; ask human to continue
+- Report SQLite state; human may run `npm run progress` for kanban view
 
 ---
 
@@ -315,8 +286,6 @@ When a user runs `/shipit`:
 2. Validate completeness — else **halt**
 3. Detect project capabilities (§10 / §11)
 4. Initialise databases (§10; orchestration: `references/init-db.sql`)
-5. If `./review.md` missing → copy `references/review.md`
-
 ### Phase 0.5 — Greenfield detection
 
 If (`package.json` OR `src/` OR required `server/` missing) **and** SPEC.md §5 includes a row with Scope **Scaffold** (typically Order 0):
@@ -332,19 +301,16 @@ Until all §5 rows (except Integration) are `APPROVED`:
 
 ```
 1. WAVE PLAN — compute ready set (config.max_concurrent_components)
-2. BOARD — add/update rows; seed stubs for wave components
-3. APPROVED FILE REGISTRY — SQLite; passing_acs per component brief
-4. PARALLEL (or serial) Builder Tasks → wait all
-5. G1 each component — SQLite + **Builder status:** in anchor
-6. UPDATE BOARD — Builder column
-7. PARALLEL (or serial) Reviewer Tasks → wait all
-8. G2 each component — SQLite verdict + anchor
-9. UPDATE BOARD — Reviewer column; iteration log
-10. FOR each component:
+2. APPROVED FILE REGISTRY — SQLite; passing_acs per component brief
+3. PARALLEL (or serial) Builder Tasks → wait all
+4. G1 each component — SQLite only
+5. PARALLEL (or serial) Reviewer Tasks → wait all
+6. G2 each component — SQLite only
+7. FOR each component:
       APPROVED → build_manifest_state APPROVED
       CHANGES_REQUIRED → if iteration > max_iterations ESCALATE
-        else FIX_ONLY brief + re-seed builder stub only → DELTA_REVIEW → repeat 4–9 for that component only
-11. Repeat from 1 until no ready rows remain
+        else FIX_ONLY brief → DELTA_REVIEW → repeat 3–6 for that component only
+8. Repeat from 1 until no ready rows remain
 ```
 
 **Integration** (order 7) is **not** mixed into waves — run in Phase 2 only.
@@ -353,7 +319,7 @@ Until all §5 rows (except Integration) are `APPROVED`:
 
 When all non-integration manifest rows `APPROVED`:
 
-1. Board row `Integration`; seed Integration anchors; copy `e2e_result.md` template
+1. Copy `e2e_result.md` template; launch Integration builder → reviewer (serial)
 2. Builder → G1 → Reviewer → G2 (serial)
 3. E2E Agent → **G4**
 4. Route per `e2e_result.md`: TARGETED_REBUILD | INTEGRATION_REBUILD | ESCALATE
@@ -372,7 +338,7 @@ When all non-integration manifest rows `APPROVED`:
 Components:   [N] approved
 Waves:        [count]
 Subagent runs: [builder + reviewer + e2e]
-Iterations:   [per component from SQLite / iteration log]
+Iterations:   [per component from SQLite reviews]
 AC Pass:      [X]/[total]
 TAC Pass:     [from e2e_result.md]
 Visual Match: [from metrics]
@@ -388,11 +354,10 @@ Escalation: distinguish regressions vs new failures from SQLite `ac_results.is_r
 | File | Location |
 |------|----------|
 | `SPEC.md` | project root |
-| `review.md` | project root (multi-component board) |
-| `review-component-stub.md` | `.cursor/skills/shipit/references/` (orchestrator seeds blocks) |
 | `e2e_result.md` | project root |
-| `review_history.db` | project root (orchestration — always) |
+| `review_history.db` | project root (orchestration — gates + history) |
 | `agentic-todo.db` | project root (application — when SPEC §10 Application database is used) |
+| Human progress | `npm run progress` → `scripts/progress.mjs` (stdout kanban; not a gate) |
 
 ---
 
@@ -401,7 +366,6 @@ Escalation: distinguish regressions vs new failures from SQLite `ac_results.is_r
 - Orchestrator never implements `src/` or `server/`
 - Never skip reviewer per manifest row
 - Never skip E2E on integration pass
-- Orchestrator owns manifest board + iteration log; agents own anchored blocks only
-- On retry, reset **only** that component’s builder stub — do not wipe other anchors
+- Routing and gates use `review_history.db` only — no `review.md`
+- On retry, increment `iteration` and run FIX_ONLY builder + DELTA_REVIEW reviewer for that component only
 - `max_iterations` is the only hardcoded retry limit per component
-- SQLite verdict wins if `review.md` anchor drifts
